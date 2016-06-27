@@ -1,0 +1,8 @@
+*root
+*log
+*err
+*o
+.sl*
+~*
+submit/
+temp*
