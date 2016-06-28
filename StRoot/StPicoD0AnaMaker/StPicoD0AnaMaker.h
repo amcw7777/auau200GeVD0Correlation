@@ -28,6 +28,7 @@
 #include "TH3D.h"
 #include "TH2F.h"
 #include "TProfile.h"
+#include "THnSparse.h"
 #include "StiMaker/StKFVerticesCollection.h"
 #include "StPhysicalHelixD.hh"
 class StPrimaryVertex; 
@@ -72,6 +73,7 @@ class StPicoD0AnaMaker : public StMaker
 
     bool isGoodPair(StKaonPion const*) const;
     int isD0Pair(StKaonPion const*) const;
+    int isD0Pair150(StKaonPion const*) const;
     int D0Reco(StThreeVectorF *);
     bool isGoodEvent();
     bool isMBTrigger();
@@ -108,25 +110,18 @@ class StPicoD0AnaMaker : public StMaker
     TH1F *dCount;
     TH1F *hJetPt;;
     TH1F *hHadronPt;;
-    TH2F *corClose;
-    TH2F *corFar;
-    TH2F *corCloseBkg;
-    TH2F *corFarBkg;
-    TH2F *corBkg;
-    TH2F *corCand;
-    TH2F *dCorPxPlus;
-    TH2F *dCorPxMinus;
+    TH2F *jetPtPhi;
+
+    THnSparseD *hD0JetCorrCand;
+    THnSparseD *hD0JetCorrBkg;
+    THnSparseD *hD0HadronCorrCand;
+    THnSparseD *hD0HadronCorrBkg;
+    THnSparseD *hD0D0Corr;
+
     TH3F *massPt;
-    TH3F *massPtPlus;
-    TH3F *massPtMinus;
     TH2F *candCount;
     TH2F *bkgCount;
-    TH2F *jetPtPhi;
-    TH2F *dcaD0Daughters;
-    TH2F *dcaPrimaryTracks;
-    TH2F *dcaGlobalTracks;
-    TH2F *dcaPrimaryTracksHFT;
-    TH2F *dcaGlobalTracksHFT;
+
     TH3F *dcaCandJets;
     TH3F *dcaBkgJets;
     TH3F *invMCandJets;

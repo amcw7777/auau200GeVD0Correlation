@@ -92,56 +92,47 @@ Int_t StPicoD0AnaMaker::Init()
 
   float xbin[7] = {0,1,2,3,4,5,10};                                     
   float binMass[2001];
-  float binPhi[2001];
   float binCent[10];
-  for(int i=0;i<2001;i++)
-    binPhi[i] = 0.005*i-5;                                              
   for(int i=0;i<2001;i++)                                               
     binMass[i] = 0.01*i; 
   for(int i=0;i<10;i++)
     binCent[i] = 1.0*i;
   massPt = new TH3F("massPt","",2000,binMass,6,xbin,9,binCent);
-  massPtMinus = new TH3F("massPtMinus","",2000,binMass,6,xbin,9,binCent);
-  massPtPlus = new TH3F("massPtPlus","",2000,binMass,6,xbin,9,binCent);
   massPt->Sumw2();
-  massPtMinus->Sumw2();
-  massPtPlus->Sumw2();
 
   vtxz = new TH1F("vtxz","",100,-10,10);
   dCount = new TH1F("dCount","dCount",10,0,10);
   hJetPt = new TH1F("hJetPt","",100,0,10);
   hHadronPt = new TH1F("hHadronPt","",100,0,10);
+  candCount = new TH2F("candCount","",1,0.5,1.5,10,0,10);                   
+  bkgCount = new TH2F("bkgCount","",1,0.5,1.5,10,0,10);
   // phiRun = new TH2F("phiRun","",60018,15107000,15167018,1000,-1.*pi,1.*pi);
   // mOutputFile->cd();
 
-  corClose = new TH2F("corClose","",1000,-1.6,4.8,10,0,10);
-  corFar = new TH2F("corFar","",1000,-1.6,4.8,10,0,10);
-  corClose->Sumw2();
-  corFar->Sumw2();
+  const int NDim = 3;// dPhi, centrality, pT
+  const int NBinNumber[NDim] = {1000,10,100};
+  const double XMin[NDim] = {-1.6,0,0};
+  const double XMax[NDim] = {4.8,10,100};
 
-  corCloseBkg = new TH2F("corCloseBkg","",1000,-1.6,4.8,10,0,10);
-  corFarBkg = new TH2F("corFarBkg","",1000,-1.6,4.8,10,0,10);
-  corCloseBkg->Sumw2();
-  corFarBkg->Sumw2();
+  hD0JetCorrCand = new THnSparseD("hD0JetCorrCand","(1/N_{trig})(dN_{trig}/d#Delta#phi);#Delta #phi;centrality bin ; pT (GeV/c)",NDim,NBinNumber,XMin,XMax);
+  hD0JetCorrBkg = new THnSparseD("hD0JetCorrBkg","(1/N_{trig})(dN_{trig}/d#Delta#phi);#Delta #phi;centrality bin;pT (GeV/c)",NDim,NBinNumber,XMin,XMax);
+  hD0JetCorrCand->Sumw2();
+  hD0JetCorrBkg->Sumw2();
 
-  dCorPxPlus = new TH2F("dCorPxPlus","",1000,-100,100,10,0,10);
-  dCorPxMinus = new TH2F("dCorPxMinus","",1000,-100,100,10,0,10);
+  hD0HadronCorrCand = new THnSparseD("hD0HadronCorrCand","(1/N_{trig})(dN_{trig}/d#Delta#phi);#Delta #phi;centrality bin;pT (GeV/c)",NDim,NBinNumber,XMin,XMax);
+  hD0HadronCorrBkg = new THnSparseD("hD0HadronCorrBkg","(1/N_{trig})(dN_{trig}/d#Delta#phi);#Delta #phi;centrality bin;pT (GeV/c)",NDim,NBinNumber,XMin,XMax);
+  hD0HadronCorrCand->Sumw2();
+  hD0HadronCorrBkg->Sumw2();
 
-  candCount = new TH2F("candCount","",1,0.5,1.5,10,0,10);
-  bkgCount = new TH2F("bkgCount","",1,0.5,1.5,10,0,10);
-
-  corBkg = new TH2F("corBkg","",1000,-1.6,4.8,10,0,10);
-  corCand = new TH2F("corCand","",1000,-1.6,4.8,10,0,10);
-  corBkg->Sumw2();
-  corCand->Sumw2();
+  const int NDimD0 = 4;// dPhi, centrality, pT
+  const int NBinNumberD0[NDimD0] = {1000,10,100,5};
+  const double XMinD0[NDimD0] = {-1.6,0,0,0};
+  const double XMaxD0[NDimD0] = {4.8,10,100,5};
+  hD0D0Corr = new THnSparseD("hD0D0CorrCand","(1/N_{trig})(dN_{trig}/d#Delta#phi);#Delta #phi;centrality bin;pT (GeV/c);corIndex",NDimD0,NBinNumberD0,XMinD0,XMaxD0);
+  hD0D0Corr->Sumw2();
 
 
   jetPtPhi = new TH2F("jetPtPhi","jet-pt-phi;p_{T};#phi",1000,0,100,1000,-1.6,4.8);
-  dcaD0Daughters = new TH2F("dcaD0Daughters","",1000,0,10,100,0,100);
-  dcaPrimaryTracks = new TH2F("dcaPrimaryTracks","",1000,0,10,100,0,10);
-  dcaGlobalTracks = new TH2F("dcaGlobalTracks","",1000,0,10,100,0,10);
-  dcaPrimaryTracksHFT = new TH2F("dcaPrimaryTracksHFT","",1000,0,10,100,0,10);
-  dcaGlobalTracksHFT = new TH2F("dcaGlobalTracksHFT","",1000,0,10,100,0,10);
 
   dcaCandJets = new TH3F("dcaCandJets","",10000,0,10,6,0,3.1416,10,0,10);
   dcaBkgJets = new TH3F("dcaBkgJets","",10000,0,10,6,0,3.1416,10,0,10);
@@ -164,31 +155,27 @@ Int_t StPicoD0AnaMaker::Finish()
 {
   LOG_INFO << " StPicoD0AnaMaker - writing data and closing output file " <<endm;
   mOutputFile->cd();
+
   vtxz->Write();
   dCount->Write();
   hJetPt->Write();
   hHadronPt->Write();
-  corClose->Write();
-  corFar->Write();
-  corCloseBkg->Write();
-  corFarBkg->Write();
+  jetPtPhi->Write();
+
   massPt->Write();
-  massPtPlus->Write();
-  massPtMinus->Write();
-  dCorPxPlus->Write();
-  dCorPxMinus->Write();
+
   candCount->Write();
   bkgCount->Write();
-  jetPtPhi->Write();
-  dcaD0Daughters->Write();
-  dcaGlobalTracks->Write();
-  dcaPrimaryTracks->Write();
-  dcaGlobalTracksHFT->Write();
-  dcaPrimaryTracksHFT->Write();
-  corBkg->Write();
-  corCand->Write();
+
+  hD0JetCorrCand->Write();
+  hD0JetCorrBkg->Write();
+  hD0HadronCorrCand->Write();
+  hD0HadronCorrBkg->Write();
+  hD0D0Corr->Write();
+
   invMCandJets->Write();
   invMBkgJets->Write();
+
   mOutputFile->Close();
   delete mPrescales;
 
@@ -261,10 +248,6 @@ Int_t StPicoD0AnaMaker::Make()
 
   double reweight = mGRefMultCorrUtil->getWeight();
   double pi = TMath::Pi();
-  // double pxPlusCut[9] = {-1.7,-4.5,-6.1,-9.7,-14.5,-20.1,-26.7,-31.1,-34.5};
-  // double pxMinusCut[9] = {-2.3,-4.3,-6.9,-10.7,-15.5,-21.3,-27.3,-31.1,-33.9};//10%cut for hadron 0.2
-  double pxPlusCut[9] = {999,999,999,999,999,999,999,999,999};//10%cut for hadron 0.2
-  double pxMinusCut[9] = {999,999,999,999,999,999,999,999,999};//10%cut for hadron 0.2
   double fitmean[6] = {1.85921,1.8633,1.86403,1.86475,1.86252,1.86534};
   double fitsigma[6] = {0.018139,0.0139476,0.0158346,0.0169282,0.0199567,0.0189131};
   double d_counting = 0;
@@ -283,10 +266,10 @@ Int_t StPicoD0AnaMaker::Make()
     bool goodKaon = (tofAvailable && tofKaon) || (!tofAvailable && tpcKaon);
     if(!goodKaon) continue;
     int charge=isD0Pair(kp);
-    if(0==charge) continue;
-    if(charge<0)  d_counting++;
-    dcaD0Daughters->Fill(kp->pionDca(),pion->gPt());
-    dcaD0Daughters->Fill(kp->kaonDca(),kaon->gPt());
+    if(-2==charge) continue;
+    if(charge!=0)  d_counting++;
+    // dcaD0Daughters->Fill(kp->pionDca(),pion->gPt());
+    // dcaD0Daughters->Fill(kp->kaonDca(),kaon->gPt());
     set<unsigned int> dDaughters;
     dDaughters.insert(kp->kaonIdx());
     dDaughters.insert(kp->pionIdx());
@@ -304,7 +287,6 @@ Int_t StPicoD0AnaMaker::Make()
       double trackDca = getDca(mTrack);
       if(trackDca>3)  continue;
       if(dDaughters.find(i) != dDaughters.end())  continue;
-      double hadron_phi = mTrack->gMom(pVtx,field).phi();
       double trackPx = mTrack->gMom(pVtx,field).x();   
       double trackPy = mTrack->gMom(pVtx,field).y();   
       double trackPz = mTrack->gMom(pVtx,field).z();   
@@ -320,7 +302,7 @@ Int_t StPicoD0AnaMaker::Make()
       // trackAdd.push_back(pairT);
     }
     fastjet::ClusterSequence cs(selectedTracks,jetDefinition);
-    double ptmin = 0.2;
+    // double ptmin = 0.2;
     std::vector<fastjet::PseudoJet> mInclusiveJets;
     mInclusiveJets = cs.inclusive_jets();
     // for(unsigned int i=0;i<mInclusiveJets.size();i++)
@@ -333,7 +315,6 @@ Int_t StPicoD0AnaMaker::Make()
 
     float d0Pt = kp->pt();
     double d0Mass = kp->m();
-    double d0Eta = kp->eta();
     if(d0Pt>10) continue;
     if(d0Pt<1)  continue;
     int fitindex = 5;
@@ -346,69 +327,18 @@ Int_t StPicoD0AnaMaker::Make()
     double sigma = fitsigma[ptIdx];
 
     double reweight_eff = (efficiency[0][fitindex]/efficiency[centBin][fitindex]);
-    // reweight*=reweight_eff;
-    double mPxPlus = 0;
-    double mPxMinus = 0;
-    // for(unsigned int i=0;i<mInclusiveJets.size();i++)
-    // {
-    //   double jetPhi = mInclusiveJets[i].phi();
-    //   // int bin_phi = phiWeight->FindBin(hadron_phi);
-    //   // double mPhiReweight = phiWeight->GetBinContent(bin_phi);
-    //   double deltaPhi = fabs(jetPhi - kp->phi());
-    //   // double deltaPhi = fabs(mTrack->gMom(pVtx,field).phi()-kp->phi());
-    //   if(deltaPhi>pi)  deltaPhi = 2.*pi-deltaPhi;
-    //   if(deltaPhi<0.5*pi) continue;
-    //   if(mInclusiveJets[i].eta()>0.5) 
-    //     mPxPlus += mInclusiveJets[i].pt() * cos(deltaPhi);
-    //   if(mInclusiveJets[i].eta()<-0.5) 
-    //     mPxMinus += mInclusiveJets[i].pt() * cos(deltaPhi);
-    // }
-    //////// Test if Px is good for D0 signal
-    if(charge<0)
+    reweight*=reweight_eff;
+    if(charge!=0)
       massPt->Fill(kp->m(),d0Pt,centrality,reweight);
-    if(mPxPlus<pxPlusCut[centrality]) massPtPlus->Fill(kp->m(),d0Pt,centrality,reweight);
-    if(mPxMinus<pxMinusCut[centrality]) massPtMinus->Fill(kp->m(),d0Pt,centrality,reweight);
-    dCorPxPlus->Fill(mPxPlus,centrality,reweight);//reweight*reweight_eff); 
-    dCorPxMinus->Fill(mPxMinus,centrality,reweight);//reweight*reweight_eff);
-
-    if(mPxMinus>pxMinusCut[centrality] && mPxPlus>pxPlusCut[centrality]) continue; 
-    bool isCand = d0Mass>mean-3*sigma && d0Mass<mean+3*sigma && charge<0;
+    bool isCand = d0Mass>mean-3*sigma && d0Mass<mean+3*sigma && charge!=0;
     bool isBkg = (d0Mass>mean-9*sigma && d0Mass<mean-4*sigma) ||
       (d0Mass<mean+9*sigma && d0Mass>mean+4*sigma) ||
-      (d0Mass>mean-3*sigma && d0Mass<mean+3*sigma && charge>0);
+      (d0Mass>mean-3*sigma && d0Mass<mean+3*sigma && charge==0);
     if(isCand)
       candCount->Fill(1,centrality);
     if(isBkg)
       bkgCount->Fill(1,centrality);
-    // for(unsigned int i=0;i<picoDst->numberOfTracks();++i)
-    // {
-    //   StPicoTrack const* mTrack = picoDst->track(i);
-    //   if(!mTrack) continue;
-    //   hCount[0]++;
-    //   if(mTrack->nHitsFit()<20) continue;
-    //   hCount[1]++;
-    //   if(1.0*mTrack->nHitsFit()/mTrack->nHitsMax()<0.52) continue;
-    //   hCount[2]++;
-    //   if(mTrack->gPt()<2) continue;
-    //   hCount[3]++;
-    //   double trackDca = getDca(mTrack);
-    //   if(trackDca>3)  continue;
-    //   hCount[4]++;
-    //   hHadronPt->Fill(mTrack->gPt());
-    //   if(dDaughters.find(i) != dDaughters.end())  continue;
-    //   double hadron_phi = mTrack->gMom(pVtx,field).phi();
-    //   double trackPx = mTrack->gMom(pVtx,field).x();   
-    //   double trackPy = mTrack->gMom(pVtx,field).y();   
-    //   double trackPz = mTrack->gMom(pVtx,field).z();   
-    //
-    //   double deltaPhi = (hadron_phi-kp->phi());
-    //   if(deltaPhi<-0.5*pi)  deltaPhi += 2*pi;
-    //   if(deltaPhi>1.5*pi)  deltaPhi -= 2*pi;
-    //   if(isCand)
-    //     corCand->Fill(deltaPhi,centrality,reweight);
-    //   if(isBkg)
-    //     corBkg->Fill(deltaPhi,centrality,reweight);
-    // }
+
     cout<<"is tracks = "<<hCount[0]<<endl;
     cout<<"pass # hits = "<<hCount[1]<<endl;
     cout<<"pass # prob = "<<hCount[2]<<endl;
@@ -416,21 +346,49 @@ Int_t StPicoD0AnaMaker::Make()
     cout<<"pass DCA = "<<hCount[4]<<endl;
 
     dCount->Fill(d_counting);
-    for(unsigned int i=0;i<mInclusiveJets.size();i++)
+///// Loop to do D0-hadron correlation
+    double hadronPtCut = 1.;
+    double jetPtCut = 3.;
+    for(unsigned int i=0;i<picoDst->numberOfTracks();++i)
     {
-      if(mInclusiveJets[i].pt()<6)  continue;
-      double deltaPhi = (mInclusiveJets[i].phi()-kp->phi());
-      double trackEta = mInclusiveJets[i].eta();
+      StPicoTrack const* mTrack = picoDst->track(i);
+      if(!mTrack) continue;
+      if(mTrack->nHitsFit()<20) continue;
+      if(1.0*mTrack->nHitsFit()/mTrack->nHitsMax()<0.52) continue;
+      if(mTrack->gPt()<hadronPtCut) continue;
+      double trackDca = getDca(mTrack);
+      if(trackDca>3)  continue;
+      hHadronPt->Fill(mTrack->gPt());
+      if(dDaughters.find(i) != dDaughters.end())  continue;
+      double hadron_phi = mTrack->gMom(pVtx,field).phi();
+      double trackPt = mTrack->gPt();
+
+      double deltaPhi = (hadron_phi-kp->phi());
       if(deltaPhi<-0.5*pi)  deltaPhi += 2*pi;
       if(deltaPhi>1.5*pi)  deltaPhi -= 2*pi;
+      double hadronFill[] = {deltaPhi,(double)centrality,trackPt};
       if(isCand)
-        corCand->Fill(deltaPhi,centrality,reweight);
+        hD0HadronCorrCand->Fill(hadronFill,reweight);
       if(isBkg)
-        corBkg->Fill(deltaPhi,centrality,reweight);
+        hD0HadronCorrCand->Fill(hadronFill,reweight);
+    }
+//////////////////////////////////////
+///// Loop to do D0-jetcorrelation
+    for(unsigned int i=0;i<mInclusiveJets.size();i++)
+    {
+      if(mInclusiveJets[i].pt()<jetPtCut)  continue;
+      double deltaPhi = (mInclusiveJets[i].phi()-kp->phi());
+      if(deltaPhi<-0.5*pi)  deltaPhi += 2*pi;
+      if(deltaPhi>1.5*pi)  deltaPhi -= 2*pi;
+      double jetFill[] = {deltaPhi,(double)centrality,mInclusiveJets[i].pt()};
+      if(isCand)
+        hD0JetCorrCand->Fill(jetFill,reweight);
+      if(isBkg)
+        hD0JetCorrCand->Fill(jetFill,reweight);
       std::vector<fastjet::PseudoJet> constituents = mInclusiveJets[i].constituents();
-      for(int iC=0;iC<constituents.size();iC++)
+      for(unsigned int iC=0;iC<constituents.size();iC++)
       {
-         for(int jC = iC;jC<constituents.size();jC++)
+         for(unsigned int jC = iC;jC<constituents.size();jC++)
          {
            fastjet::PseudoJet cPair = constituents[iC]+constituents[jC];
            if(isCand)
@@ -440,6 +398,52 @@ Int_t StPicoD0AnaMaker::Make()
          }
       }
     }
+///// Loop to do D0-jet correlation
+//////////////////////////////////////
+///// Loop to do D0-D0 correlation
+    for (int jdx = idx; jdx < aKaonPion->GetEntries(); ++jdx)
+    {
+      StKaonPion const* kp_acc = (StKaonPion*)aKaonPion->At(jdx);
+      StPicoTrack const* kaon_acc = picoDst->track(kp_acc->kaonIdx());
+      StPicoTrack const* pion_acc = picoDst->track(kp_acc->pionIdx());
+
+      if (!isGoodTrack(kaon_acc) || !isGoodTrack(pion_acc)) continue;
+      if (!isTpcPion(pion_acc)) continue;
+      bool tpcKaon_acc = isTpcKaon(kaon_acc,&pVtx);
+      float kBeta_acc = getTofBeta(kaon_acc,&pVtx);
+      bool tofAvailable_acc = kBeta_acc>0;
+      bool tofKaon_acc = tofAvailable_acc && isTofKaon(kaon_acc,kBeta_acc);
+      bool goodKaon_acc = (tofAvailable_acc && tofKaon_acc) || (!tofAvailable_acc && tpcKaon_acc);
+      if(!goodKaon_acc) continue;
+      int charge_acc=isD0Pair150(kp_acc);
+      if(charge_acc==-2) continue;
+      if(charge_acc*charge>=0) continue;
+
+      float d0PtAcc = kp_acc->pt();
+      double d0MassAcc = kp_acc->m();
+      int ptIdxAcc = 5;
+      if(kp_acc->pt()<5)
+        ptIdxAcc = static_cast<int>(kp_acc->pt());
+      double meanAcc = fitmean[ptIdxAcc];
+      double sigmaAcc = fitsigma[ptIdxAcc];
+
+      bool isCandAcc = d0MassAcc>meanAcc-3*sigmaAcc && d0MassAcc<meanAcc+3*sigmaAcc && charge!=0;
+      bool isBkgAcc = (d0MassAcc>meanAcc-9*sigmaAcc && d0MassAcc<meanAcc-4*sigmaAcc) ||
+        (d0MassAcc<meanAcc+9*sigmaAcc && d0MassAcc>meanAcc+4*sigmaAcc) ||
+        (d0MassAcc>meanAcc-3*sigmaAcc && d0MassAcc<meanAcc+3*sigmaAcc && charge==0);
+      int indexCor = 0;
+      if(isCand && isCandAcc)  indexCor = 1;
+      if(isCand && isBkgAcc)  indexCor = 2;
+      if(isBkg && isCandAcc)  indexCor = 3;
+      if(isBkg && isBkgAcc)  indexCor = 4;
+      double deltaPhi = kp->phi()-kp_acc->phi();
+      if(fabs(deltaPhi-0.)<0.000001)  continue;
+      if(deltaPhi<-0.5*pi)  deltaPhi += 2*pi;
+      if(deltaPhi>1.5*pi)  deltaPhi -= 2*pi;
+      double d0Fill[] = {deltaPhi,(double)centrality,d0PtAcc,(double)indexCor};
+      hD0D0Corr->Fill(d0Fill,reweight);
+    }
+
   }
   return kStOK;
 }
@@ -501,14 +505,58 @@ int StPicoD0AnaMaker::isD0Pair(StKaonPion const* const kp) const // return -1:un
       kp->dcaDaughters() < 0.0060 && kp->decayLength()>0.0259;  
   }
 
-  int charge = kaon->charge() * pion->charge();
+  int charge = (kaon->charge() * pion->charge()>0)?0:kaon->charge();
   if(pairCuts)
     return charge;
   else
-    return 0;
+    return -2;
 }
 /*
 */
+
+int StPicoD0AnaMaker::isD0Pair150(StKaonPion const* const kp) const
+{
+
+  StPicoTrack const* kaon = picoDst->track(kp->kaonIdx());
+  StPicoTrack const* pion = picoDst->track(kp->pionIdx());
+  bool pairCuts = false;
+  if(kp->pt()<1)
+  {
+    pairCuts =  sin(kp->pointingAngle())*kp->decayLength() < 0.0072 &&
+      kp->pionDca() > 0.0092 && kp->kaonDca() > 0.0105 &&
+      kp->dcaDaughters() < 0.0077 && kp->decayLength()>0.0110;  
+  }
+  else if(kp->pt()<2)
+  {
+    pairCuts =  sin(kp->pointingAngle())*kp->decayLength() < 0.0053 &&
+      kp->pionDca() > 0.0078 && kp->kaonDca() > 0.0068 &&
+      kp->dcaDaughters() < 0.0078 && kp->decayLength()>0.0168;  
+  }
+  else if(kp->pt()<3)
+  {
+    pairCuts =  sin(kp->pointingAngle())*kp->decayLength() < 0.0047 &&
+      kp->pionDca() > 0.0086 && kp->kaonDca() > 0.0080 &&
+      kp->dcaDaughters() < 0.0074 && kp->decayLength()>0.0187;  
+  }
+  else if(kp->pt()<5)
+  {
+    pairCuts =  sin(kp->pointingAngle())*kp->decayLength() < 0.0042 &&
+      kp->pionDca() > 0.0065 && kp->kaonDca() > 0.0066 &&
+      kp->dcaDaughters() < 0.0068 && kp->decayLength()>0.0199;  
+  }
+  else 
+  {
+    pairCuts =  sin(kp->pointingAngle())*kp->decayLength() < 0.0062 &&
+      kp->pionDca() > 0.0047 && kp->kaonDca() > 0.0041 &&
+      kp->dcaDaughters() < 0.0066 && kp->decayLength()>0.0180;  
+  }
+
+  int charge = (kaon->charge() * pion->charge()>0)?0:kaon->charge();
+  if(pairCuts)
+    return charge;
+  else
+    return -2;
+}
 
 bool StPicoD0AnaMaker::isGoodEvent()
 {
