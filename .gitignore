@@ -1,4 +1,5 @@
 *root
+!plotter/root-files
 *log
 *err
 *o
