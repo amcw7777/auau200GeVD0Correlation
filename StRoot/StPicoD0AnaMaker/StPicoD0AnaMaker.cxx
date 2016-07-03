@@ -370,7 +370,7 @@ Int_t StPicoD0AnaMaker::Make()
       if(isCand)
         hD0HadronCorrCand->Fill(hadronFill,reweight);
       if(isBkg)
-        hD0HadronCorrCand->Fill(hadronFill,reweight);
+        hD0HadronCorrBkg->Fill(hadronFill,reweight);
     }
 //////////////////////////////////////
 ///// Loop to do D0-jetcorrelation
@@ -384,7 +384,7 @@ Int_t StPicoD0AnaMaker::Make()
       if(isCand)
         hD0JetCorrCand->Fill(jetFill,reweight);
       if(isBkg)
-        hD0JetCorrCand->Fill(jetFill,reweight);
+        hD0JetCorrBkg->Fill(jetFill,reweight);
       std::vector<fastjet::PseudoJet> constituents = mInclusiveJets[i].constituents();
       for(unsigned int iC=0;iC<constituents.size();iC++)
       {
