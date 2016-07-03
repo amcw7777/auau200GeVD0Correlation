@@ -10,87 +10,50 @@
 #include "TF1.h"
 #include "TLatex.h"
 #include "TGraph.h"
+#include "THnSparse.h"
 
-#include "d0jet_corr_plotter.h"
+#include "d0_corr_plotter.h"
 using namespace std;
 
-void D0jetCorrPlotter::init(TString inputFileName)
+void D0CorrPlotter::init(TString inputFileName)
 {
 	inputFile = new TFile(inputFileName.Data());
   mLog.open("d0jet_corr_plotter.log");
 }
 
-void D0jetCorrPlotter::finish()
+void D0CorrPlotter::finish()
 {
 }
 
-void D0jetCorrPlotter::getPxCut(double pxCutPercentage)
+//
+// void D0CorrPlotter::getCorrelation(int rebinFactor)
+// {
+//   pair<int,int> ptBinCut(2,10);
+// 	TH2F *corBkg2D = (TH2F *)inputFile->Get("corBkg")->Clone("corBkg2D");
+// 	TH2F *corCand2D = (TH2F *)inputFile->Get("corCand")->Clone("corCand2D");
+//   TH2F *candCount = (TH2F *)inputFile->Get("candCount")->Clone("candCount");
+//   TH2F *bkgCount = (TH2F *)inputFile->Get("bkgCount")->Clone("bkgCount");
+//   double nD0Cand = candCount->ProjectionX("candCount1D")->Integral();
+//   double nD0Bkg= bkgCount->ProjectionX("bkgCount1D")->Integral();
+//   cout<<"# of candidate D0 = "<<nD0Cand<<endl;
+//   cout<<"# of background D0 = "<<nD0Bkg<<endl;
+// 	candCorrelation = (TH1D *)corCand2D->ProjectionX("candCorrelation",2,2)->Clone("candCorrelation");
+// 	bkgCorrelation = (TH1D *)corBkg2D->ProjectionX("bkgCorrelation",2,2)->Clone("bkgCorrelation");
+// 	candCorrelation->Rebin(rebinFactor);
+// 	candCorrelation->Scale(1./candCorrelation->GetBinWidth(1)/nD0Cand);
+// 	bkgCorrelation->Rebin(rebinFactor);
+// 	bkgCorrelation->Scale(1./bkgCorrelation->GetBinWidth(1)/nD0Bkg);
+//
+// 	TH3F *mass2d = (TH3F *)inputFile->Get("massPt")->Clone("mass2d");
+// 	TH1D *massAllTrigger = (TH1D *)mass2d->ProjectionX("massAllTrigger",ptBinCut.first,ptBinCut.second,1,10)->Clone("massAllTrigger");
+// 	double f = getSBRatio(massAllTrigger);
+// }
+void D0CorrPlotter::getJetCorrelation(pair<int,int> &centralityBinCut,pair<double,double> &ptCut,int rebinFactor)
 {
-	TH2F *dCorPxPlus = (TH2F *)inputFile->Get("dCorPxPlus")->Clone("dCorPxPlus");
-	TH2F *dCorPxMinus = (TH2F *)inputFile->Get("dCorPxMinus")->Clone("dCorPxMinus");
-	TH1F *corPxPlus[9];
-	TH1F *corPxMinus[9];
-	TCanvas *mPxCanvas = new TCanvas();
-	mPxCanvas->Divide(3,3);
-  double pxPlusCut[9],pxMinusCut[9];
-	for(int i=0;i<9;++i)
-	{
-		corPxPlus[i] = (TH1F *)(dCorPxPlus->ProjectionX(Form("pxplus_%i",i),i+1,i+1)->Clone(Form("pxPlus_%i",i)));
-		mPxCanvas->cd(i+1);
-		corPxPlus[i]->Draw();
-		double sumPxPlus = 0;
-		double intePxPlus = corPxPlus[i]->Integral();
-		int jPxBin;
-		for(jPxBin=1 ; sumPxPlus<pxCutPercentage*intePxPlus ; jPxBin++)
-			sumPxPlus += corPxPlus[i]->GetBinContent(jPxBin);
-		pxPlusCut[i] = corPxPlus[i]->GetBinCenter(jPxBin);
-		corPxMinus[i] = (TH1F *)dCorPxMinus->ProjectionX(Form("pxminus_%i",i),i+1,i+1)->Clone(Form("pxMinus_%i",i));
-		corPxMinus[i]->Draw("same");
-		corPxMinus[i]->SetLineColor(2);
-		double sumPxMinus = 0;
-		double intePxMinus = corPxMinus[i]->Integral();
-		for(jPxBin=1 ; sumPxMinus<pxCutPercentage*intePxMinus ; jPxBin++)
-			sumPxMinus += corPxMinus[i]->GetBinContent(jPxBin);
-		pxMinusCut[i] = corPxMinus[i]->GetBinCenter(jPxBin);
-	}
-  cout<<"minus px cut:";
-	for(int i=0;i<9;++i)
-		cout<<pxMinusCut[i]<<",";
-  cout<<endl;
-  cout<<"plus px cut:";
-	for(int i=0;i<9;++i)
-		cout<<pxPlusCut[i]<<",";
-  cout<<endl;
-}
-
-
-void D0jetCorrPlotter::getCorrelation(int rebinFactor)
-{
-  pair<int,int> ptBinCut(2,10);
-	TH2F *corBkg2D = (TH2F *)inputFile->Get("corBkg")->Clone("corBkg2D");
-	TH2F *corCand2D = (TH2F *)inputFile->Get("corCand")->Clone("corCand2D");
-  TH2F *candCount = (TH2F *)inputFile->Get("candCount")->Clone("candCount");
-  TH2F *bkgCount = (TH2F *)inputFile->Get("bkgCount")->Clone("bkgCount");
-  double nD0Cand = candCount->ProjectionX("candCount1D")->Integral();
-  double nD0Bkg= bkgCount->ProjectionX("bkgCount1D")->Integral();
-  cout<<"# of candidate D0 = "<<nD0Cand<<endl;
-  cout<<"# of background D0 = "<<nD0Bkg<<endl;
-	candCorrelation = (TH1D *)corCand2D->ProjectionX("candCorrelation",2,2)->Clone("candCorrelation");
-	bkgCorrelation = (TH1D *)corBkg2D->ProjectionX("bkgCorrelation",2,2)->Clone("bkgCorrelation");
-	candCorrelation->Rebin(rebinFactor);
-	candCorrelation->Scale(1./candCorrelation->GetBinWidth(1)/nD0Cand);
-	bkgCorrelation->Rebin(rebinFactor);
-	bkgCorrelation->Scale(1./bkgCorrelation->GetBinWidth(1)/nD0Bkg);
-
-	TH3F *mass2d = (TH3F *)inputFile->Get("massPt")->Clone("mass2d");
-	TH1D *massAllTrigger = (TH1D *)mass2d->ProjectionX("massAllTrigger",ptBinCut.first,ptBinCut.second,1,10)->Clone("massAllTrigger");
-	double f = getSBRatio(massAllTrigger);
-}
-void D0jetCorrPlotter::getCorrelation(pair<int,int> &centralityBinCut,int rebinFactor)
-{
-  pair<int,int> ptBinCut(2,10);
-	TH2F *corBkg2D = (TH2F *)inputFile->Get("corBkg")->Clone("corBkg2D");
-	TH2F *corCand2D = (TH2F *)inputFile->Get("corCand")->Clone("corCand2D");
+	// TH2F *corBkg2D = (TH2F *)inputFile->Get("corBkg")->Clone("corBkg2D");
+	// TH2F *corCand2D = (TH2F *)inputFile->Get("corCand")->Clone("corCand2D");
+  THnSparseD *d0JetCorrCand = (THnSparseD *)inputFile->Get("hD0JetCorrCand")->Clone("d0JetCorrCand");
+  THnSparseD *d0JetCorrBkg = (THnSparseD *)inputFile->Get("hD0JetCorrBkg")->Clone("d0JetCorrBkg");
   TH2F *candCount = (TH2F *)inputFile->Get("candCount")->Clone("candCount");
   TH2F *bkgCount = (TH2F *)inputFile->Get("bkgCount")->Clone("bkgCount");
 
@@ -99,21 +62,60 @@ void D0jetCorrPlotter::getCorrelation(pair<int,int> &centralityBinCut,int rebinF
   cout<<"# of candidate D0 = "<<nD0Cand<<endl;
   cout<<"# of background D0 = "<<nD0Bkg<<endl;
 
-	candCorrelation = (TH1D *)corCand2D->ProjectionX("candCorrelation",centralityBinCut.first,centralityBinCut.second)->Clone("candCorrelation");
-	bkgCorrelation = (TH1D *)corBkg2D->ProjectionX("bkgCorrelation",centralityBinCut.first,centralityBinCut.second)->Clone("bkgCorrelation");
+  d0JetCorrCand->GetAxis(1)->SetRange(centralityBinCut.first,centralityBinCut.second);
+  d0JetCorrCand->GetAxis(2)->SetRangeUser(ptCut.first,ptCut.second);
+  d0JetCorrBkg->GetAxis(1)->SetRange(centralityBinCut.first,centralityBinCut.second);
+  d0JetCorrBkg->GetAxis(2)->SetRangeUser(ptCut.first,ptCut.second);
+	// candCorrelation = (TH1D *)corCand2D->ProjectionX("candCorrelation",centralityBinCut.first,centralityBinCut.second)->Clone("candCorrelation");
+	// bkgCorrelation = (TH1D *)corBkg2D->ProjectionX("bkgCorrelation",centralityBinCut.first,centralityBinCut.second)->Clone("bkgCorrelation");
+	candJetCorrelation = (TH1D *)d0JetCorrCand->Projection(0)->Clone("candJetCorrelation");
+	bkgJetCorrelation = (TH1D *)d0JetCorrBkg->Projection(0)->Clone("bkgJetCorrelation");
   // get candidate correlation
-	candCorrelation->Rebin(rebinFactor);
-	candCorrelation->Scale(1./candCorrelation->GetBinWidth(1)/nD0Cand);
-	bkgCorrelation->Rebin(rebinFactor);
-	bkgCorrelation->Scale(1./bkgCorrelation->GetBinWidth(1)/nD0Bkg);
+	candJetCorrelation->Rebin(rebinFactor);
+	candJetCorrelation->Scale(1./candJetCorrelation->GetBinWidth(1)/nD0Cand);
+	bkgJetCorrelation->Rebin(rebinFactor);
+	bkgJetCorrelation->Scale(1./bkgJetCorrelation->GetBinWidth(1)/nD0Bkg);
 
 	TH3F *mass2d = (TH3F *)inputFile->Get("massPt")->Clone("mass2d");
 	// TH1D *massAllTrigger = (TH1D *)mass2d->ProjectionX("massAllTrigger",ptBinCut.first,ptBinCut.second,centralityBinCut.first,centralityBinCut.second)->Clone("massAllTrigger");
-	TH1D *massAllTrigger = (TH1D *)mass2d->ProjectionX("massAllTrigger",ptBinCut.first,ptBinCut.second,centralityBinCut.first,centralityBinCut.second)->Clone("massAllTrigger");
+	TH1D *massAllTrigger = (TH1D *)mass2d->ProjectionX("massAllTrigger",ptCut.first,ptCut.second,centralityBinCut.first,centralityBinCut.second)->Clone("massAllTrigger");
 	double f = getSBRatio(massAllTrigger);
-
 }
-void D0jetCorrPlotter::plotJetInvM()
+void D0CorrPlotter::getHadronCorrelation(pair<int,int> &centralityBinCut,pair<double,double> &ptCut,int rebinFactor)
+{
+	// TH2F *corBkg2D = (TH2F *)inputFile->Get("corBkg")->Clone("corBkg2D");
+	// TH2F *corCand2D = (TH2F *)inputFile->Get("corCand")->Clone("corCand2D");
+  THnSparseD *d0HadronCorrCand = (THnSparseD *)inputFile->Get("hD0HadronCorrCand")->Clone("d0HadronCorrCand");
+  THnSparseD *d0HadronCorrBkg = (THnSparseD *)inputFile->Get("hD0HadronCorrBkg")->Clone("d0HadronCorrBkg");
+  TH2F *candCount = (TH2F *)inputFile->Get("candCount")->Clone("candCount");
+  TH2F *bkgCount = (TH2F *)inputFile->Get("bkgCount")->Clone("bkgCount");
+
+  double nD0Cand = candCount->ProjectionX("candCount1D",centralityBinCut.first,centralityBinCut.second)->Integral();
+  double nD0Bkg= bkgCount->ProjectionX("bkgCount1D",centralityBinCut.first,centralityBinCut.second)->Integral();
+  cout<<"# of candidate D0 = "<<nD0Cand<<endl;
+  cout<<"# of background D0 = "<<nD0Bkg<<endl;
+
+  d0HadronCorrCand->GetAxis(1)->SetRange(centralityBinCut.first,centralityBinCut.second);
+  d0HadronCorrCand->GetAxis(2)->SetRangeUser(ptCut.first,ptCut.second);
+  d0HadronCorrBkg->GetAxis(1)->SetRange(centralityBinCut.first,centralityBinCut.second);
+  d0HadronCorrBkg->GetAxis(2)->SetRangeUser(ptCut.first,ptCut.second);
+	// candCorrelation = (TH1D *)corCand2D->ProjectionX("candCorrelation",centralityBinCut.first,centralityBinCut.second)->Clone("candCorrelation");
+	// bkgCorrelation = (TH1D *)corBkg2D->ProjectionX("bkgCorrelation",centralityBinCut.first,centralityBinCut.second)->Clone("bkgCorrelation");
+	candHadronCorrelation = (TH1D *)d0HadronCorrCand->Projection(0)->Clone("candCorrelation");
+	bkgHadronCorrelation = (TH1D *)d0HadronCorrBkg->Projection(0)->Clone("candCorrelation");
+  // get candidate correlation
+	candHadronCorrelation->Rebin(rebinFactor);
+	candHadronCorrelation->Scale(1./candHadronCorrelation->GetBinWidth(1)/nD0Cand);
+	bkgHadronCorrelation->Rebin(rebinFactor);
+	bkgHadronCorrelation->Scale(1./bkgHadronCorrelation->GetBinWidth(1)/nD0Bkg);
+
+	TH3F *mass2d = (TH3F *)inputFile->Get("massPt")->Clone("mass2d");
+	// TH1D *massAllTrigger = (TH1D *)mass2d->ProjectionX("massAllTrigger",ptBinCut.first,ptBinCut.second,centralityBinCut.first,centralityBinCut.second)->Clone("massAllTrigger");
+	TH1D *massAllTrigger = (TH1D *)mass2d->ProjectionX("massAllTrigger",ptCut.first,ptCut.second,centralityBinCut.first,centralityBinCut.second)->Clone("massAllTrigger");
+	double f = getSBRatio(massAllTrigger);
+}
+
+void D0CorrPlotter::plotJetInvM()
 {
   TH3F *invMCand = (TH3F *)inputFile->Get("invMCandJets")->Clone("invMCand");
   TH3F *invMBkg = (TH3F *)inputFile->Get("invMBkgJets")->Clone("invMBkg");
@@ -139,105 +141,47 @@ void D0jetCorrPlotter::plotJetInvM()
     }
   }
 }
-void D0jetCorrPlotter::plotCorrelation()
-{
-	candCorrelationClose->SetLineColor(2);
-	double pi = TMath::Pi();
-	int bin1 = candCorrelationClose->FindBin(-0.5*pi);
-	int bin2 = candCorrelationClose->FindBin(0);
-	int bin3 = candCorrelationClose->FindBin(0.5*pi);
-	int bin4 = candCorrelationClose->FindBin(1.0*pi);
-	int bin5 = candCorrelationClose->FindBin(1.5*pi);
+// void D0CorrPlotter::plotCorrelation()
+// {
+//
+// 	TAxis* aDeltaTrigger = candCorrelation->GetXaxis();
+// 	candCorrelation->Rebin(1);
+//   double pi = 3.1415926;
+// 	int bin_d1 = candCorrelation->FindBin(-0.5*pi);
+// 	int bin_d2 = candCorrelation->FindBin(0);
+// 	int bin_d3 = candCorrelation->FindBin(0.5*pi);
+// 	int bin_d4 = candCorrelation->FindBin(1.0*pi);
+// 	int bin_d5 = candCorrelation->FindBin(1.5*pi);
+// //	aDeltaTrigger->SetBit(TAxis::kLabelsHori);
+// 	aDeltaTrigger->SetBinLabel(bin_d1,"-#pi/2");
+// 	aDeltaTrigger->SetBinLabel(bin_d2,"0");
+// 	aDeltaTrigger->SetBinLabel(bin_d3,"#pi/2");
+// 	aDeltaTrigger->SetBinLabel(bin_d4,"#pi");
+// 	aDeltaTrigger->SetBinLabel(bin_d5,"3#pi/2");
+// 	aDeltaTrigger->SetBit(TAxis::kLabelsHori);
+// 	aDeltaTrigger->SetLabelSize(0.075);
+//
+//   candCorrelation->Draw();
+//
+// 	TCanvas *bkgCanvas = new TCanvas();
+//   bkgCorrelation->Draw();
+//
+// 	TCanvas *candBkgCanvas = new TCanvas();
+// 	candCorrelation->Draw();
+// 	candCorrelation->GetYaxis()->SetTitle("(1/N_{trig})(dN_{trig}/d#Delta#phi)");
+// 	candCorrelation->GetXaxis()->SetTitle("#Delta#phi");
+// 	bkgCorrelation->Draw("same""P");
+// 	TLegend *leg = new TLegend(0.2,0.6,0.8,0.8);
+// 	leg->AddEntry(candCorrelation,"candidate correlation");
+// 	leg->AddEntry(bkgCorrelation,"bkg correlation");
+// 	leg->Draw("same");
+//
+// 	TCanvas *signalCorrelationCanvas = new TCanvas();
+// 	signalCorrelation->Draw();
+// 	bkgCorrelation->Draw("same");
+// }
 
-	TAxis* aCloseTrigger = candCorrelationClose->GetXaxis();
-	aCloseTrigger->SetBit(TAxis::kLabelsHori);
-	aCloseTrigger->SetBinLabel(bin1,"-#pi/2");
-	aCloseTrigger->SetBinLabel(bin2,"0");
-	aCloseTrigger->SetBinLabel(bin3,"#pi/2");
-	aCloseTrigger->SetBinLabel(bin4,"#pi");
-	aCloseTrigger->SetBinLabel(bin5,"3#pi/2");
-	aCloseTrigger->SetBit(TAxis::kLabelsHori);
-	aCloseTrigger->SetLabelSize(0.075);
-
-	TAxis* aFarTrigger = candCorrelationFar->GetXaxis();
-	aFarTrigger->SetBit(TAxis::kLabelsHori);
-	aFarTrigger->SetBinLabel(bin1,"-#pi/2");
-	aFarTrigger->SetBinLabel(bin2,"0");
-	aFarTrigger->SetBinLabel(bin3,"#pi/2");
-	aFarTrigger->SetBinLabel(bin4,"#pi");
-	aFarTrigger->SetBinLabel(bin5,"3#pi/2");
-	aFarTrigger->SetBit(TAxis::kLabelsHori);
-	aFarTrigger->SetLabelSize(0.075);
-
-	TAxis* aCloseBkgTrigger = bkgCorrelationClose->GetXaxis();
-	aCloseBkgTrigger->SetBit(TAxis::kLabelsHori);
-	aCloseBkgTrigger->SetBinLabel(bin1,"-#pi/2");
-	aCloseBkgTrigger->SetBinLabel(bin2,"0");
-	aCloseBkgTrigger->SetBinLabel(bin3,"#pi/2");
-	aCloseBkgTrigger->SetBinLabel(bin4,"#pi");
-	aCloseBkgTrigger->SetBinLabel(bin5,"3#pi/2");
-	aCloseBkgTrigger->SetBit(TAxis::kLabelsHori);
-	aCloseBkgTrigger->SetLabelSize(0.075);
-
-	TAxis* aDeltaTrigger = candCorrelation->GetXaxis();
-	candCorrelation->Rebin(1);
-	int bin_d1 = candCorrelation->FindBin(-0.5*pi);
-	int bin_d2 = candCorrelation->FindBin(0);
-	int bin_d3 = candCorrelation->FindBin(0.5*pi);
-	int bin_d4 = candCorrelation->FindBin(1.0*pi);
-	int bin_d5 = candCorrelation->FindBin(1.5*pi);
-//	aDeltaTrigger->SetBit(TAxis::kLabelsHori);
-	aDeltaTrigger->SetBinLabel(bin_d1,"-#pi/2");
-	aDeltaTrigger->SetBinLabel(bin_d2,"0");
-	aDeltaTrigger->SetBinLabel(bin_d3,"#pi/2");
-	aDeltaTrigger->SetBinLabel(bin_d4,"#pi");
-	aDeltaTrigger->SetBinLabel(bin_d5,"3#pi/2");
-	aDeltaTrigger->SetBit(TAxis::kLabelsHori);
-	aDeltaTrigger->SetLabelSize(0.075);
-
-	TCanvas *candCanvas = new TCanvas();
-  candCanvas->Divide(2,1);
-  candCanvas->cd(1);
-	candCorrelationClose->GetYaxis()->SetTitle("(1/N_{trig})(dN_{trig}/d#Delta#phi)");
-	candCorrelationClose->GetXaxis()->SetTitle("#Delta#phi");
-	candCorrelationClose->Draw();
-	candCorrelationFar->Draw("same");
-	candCorrelationClose->SetLineColor(2);
-	TLegend *leg2 = new TLegend(0.2,0.6,0.8,0.8);
-	leg2->AddEntry(candCorrelationClose,"Close Region");
-	leg2->AddEntry(candCorrelationFar,"Far Region");
-	leg2->Draw("same");
-  candCanvas->cd(2);
-  candCorrelation->Draw();
-
-	TCanvas *bkgCanvas = new TCanvas();
-  bkgCanvas->Divide(2,1);
-  bkgCanvas->cd(1);
-	bkgCorrelationClose->GetYaxis()->SetTitle("(1/N_{trig})(dN_{trig}/d#Delta#phi)");
-	bkgCorrelationClose->GetXaxis()->SetTitle("#Delta#phi");
-	bkgCorrelationClose->Draw();
-	bkgCorrelationFar->Draw("same");
-	bkgCorrelationClose->SetLineColor(2);
-	leg2->Draw("same");
-  bkgCanvas->cd(2);
-  bkgCorrelation->Draw();
-
-	TCanvas *candBkgCanvas = new TCanvas();
-	candCorrelation->Draw();
-	candCorrelation->GetYaxis()->SetTitle("(1/N_{trig})(dN_{trig}/d#Delta#phi)");
-	candCorrelation->GetXaxis()->SetTitle("#Delta#phi");
-	bkgCorrelation->Draw("same""P");
-	TLegend *leg = new TLegend(0.2,0.6,0.8,0.8);
-	leg->AddEntry(candCorrelation,"candidate correlation");
-	leg->AddEntry(bkgCorrelation,"bkg correlation");
-	leg->Draw("same");
-
-	TCanvas *signalCorrelationCanvas = new TCanvas();
-	signalCorrelation->Draw();
-	bkgCorrelation->Draw("same");
-}
-
-void D0jetCorrPlotter::plotSignificance(TH2D *mass2D)
+void D0CorrPlotter::plotSignificance(TH2D *mass2D)
 {
 	TH1D *massPt[9];
 	double x[5] = {1,2,3,4,5};
@@ -262,7 +206,7 @@ void D0jetCorrPlotter::plotSignificance(TH2D *mass2D)
 	significanceCanvas->cd(2);
 	sigplot->Draw();
 }
-double D0jetCorrPlotter::getSBRatio(TH1D *massHisto)
+double D0CorrPlotter::getSBRatio(TH1D *massHisto)
 {
   double fitResult[3];
   TCanvas *fitCanvas = new TCanvas();
@@ -275,7 +219,7 @@ double D0jetCorrPlotter::getSBRatio(TH1D *massHisto)
 
 
 //pair<double,double> fit_hist(TH1D *histo, TCanvas *cfg, int iptbin ,double nSigma,double fitArray[3])
-void  D0jetCorrPlotter::fit_hist(TH1D *histo, TCanvas *cfg, int iptbin ,double nSigma,double fitArray[3])
+void  D0CorrPlotter::fit_hist(TH1D *histo, TCanvas *cfg, int iptbin ,double nSigma,double fitArray[3])
 {
 
 	ROOT::Math::MinimizerOptions::SetDefaultMaxFunctionCalls(100000); 

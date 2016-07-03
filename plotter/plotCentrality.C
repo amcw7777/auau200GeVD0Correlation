@@ -4,7 +4,7 @@ void plotCentrality()
   int inputRebinFactor = 50;
   D0jetCorrPlotter *plotter = new D0jetCorrPlotter();
   // plotter->init("root-files/dJCorrPt16.root");
-  plotter->init("root-files/dHCorr_Pt3_P16.root");
+  plotter->init("root-files/d0-corr-trig-1GeV.root");
   TCanvas *c = new TCanvas();
   c->Divide(3,2);
   TH1D *candFar[9];
