@@ -18,7 +18,7 @@ using namespace std;
 void D0CorrPlotter::init(TString inputFileName)
 {
 	inputFile = new TFile(inputFileName.Data());
-  mLog.open("d0jet_corr_plotter.log");
+  mLog.open("d0_corr_plotter.log");
 }
 
 void D0CorrPlotter::finish()
@@ -70,6 +70,8 @@ void D0CorrPlotter::getJetCorrelation(pair<int,int> &centralityBinCut,pair<doubl
 	// bkgCorrelation = (TH1D *)corBkg2D->ProjectionX("bkgCorrelation",centralityBinCut.first,centralityBinCut.second)->Clone("bkgCorrelation");
 	candJetCorrelation = (TH1D *)d0JetCorrCand->Projection(0)->Clone("candJetCorrelation");
 	bkgJetCorrelation = (TH1D *)d0JetCorrBkg->Projection(0)->Clone("bkgJetCorrelation");
+  setCorrAxis(candJetCorrelation);
+  setCorrAxis(bkgJetCorrelation);
   // get candidate correlation
 	candJetCorrelation->Rebin(rebinFactor);
 	candJetCorrelation->Scale(1./candJetCorrelation->GetBinWidth(1)/nD0Cand);
@@ -103,6 +105,8 @@ void D0CorrPlotter::getHadronCorrelation(pair<int,int> &centralityBinCut,pair<do
 	// bkgCorrelation = (TH1D *)corBkg2D->ProjectionX("bkgCorrelation",centralityBinCut.first,centralityBinCut.second)->Clone("bkgCorrelation");
 	candHadronCorrelation = (TH1D *)d0HadronCorrCand->Projection(0)->Clone("candCorrelation");
 	bkgHadronCorrelation = (TH1D *)d0HadronCorrBkg->Projection(0)->Clone("candCorrelation");
+  setCorrAxis(candHadronCorrelation);
+  setCorrAxis(bkgHadronCorrelation);
   // get candidate correlation
 	candHadronCorrelation->Rebin(rebinFactor);
 	candHadronCorrelation->Scale(1./candHadronCorrelation->GetBinWidth(1)/nD0Cand);
@@ -212,6 +216,7 @@ double D0CorrPlotter::getSBRatio(TH1D *massHisto)
   TCanvas *fitCanvas = new TCanvas();
 	fit_hist(massHisto,fitCanvas,1,3,fitResult);
   mSOverC = fitResult[0]/fitResult[1];
+  fitCanvas->Close();
   return mSOverC;
 }
 
@@ -391,5 +396,42 @@ void  D0CorrPlotter::fit_hist(TH1D *histo, TCanvas *cfg, int iptbin ,double nSig
 
 
 	//return fitResult;
+}
 
+void D0CorrPlotter::setCorrAxis(TH1D *corrPlot)
+{
+  double pi = TMath::Pi();
+  int bin1 = corrPlot->FindBin(-0.5*pi);
+  int bin2 = corrPlot->FindBin(0);
+  int bin3 = corrPlot->FindBin(0.5*pi);
+  int bin4 = corrPlot->FindBin(1.0*pi);
+  int bin5 = corrPlot->FindBin(1.5*pi);
+  TAxis* xAxis = corrPlot->GetXaxis();
+  TAxis* yAxis = corrPlot->GetYaxis();  
+  yAxis->SetNdivisions(505);
+  xAxis->SetNdivisions(505);
+  xAxis->SetTitle("#Delta #phi");
+  yAxis->SetTitle("(1/N_{D^{0}})(dN_{jet}/d#Delta#phi)");
+
+  xAxis->SetTitleOffset(1.1);
+  // xAxis->SetTitleSize(0.6);
+  xAxis->SetTitleFont(42);
+  xAxis->SetLabelOffset(0.01);
+  // xAxis->SetLabelSize(0.6);
+  xAxis->SetLabelFont(42);
+  yAxis->SetTitleOffset(1.1);
+  // yAxis->SetTitleSize(0.6);
+  yAxis->SetTitleFont(42);
+  yAxis->SetLabelOffset(0.01);
+  // yAxis->SetLabelSize(0.6);
+  yAxis->SetLabelFont(42);
+
+  xAxis->SetBit(TAxis::kLabelsHori);
+  xAxis->SetBinLabel(bin1,"-#pi/2");
+  xAxis->SetBinLabel(bin2,"0");
+  xAxis->SetBinLabel(bin3,"#pi/2");
+  xAxis->SetBinLabel(bin4,"#pi");
+  xAxis->SetBinLabel(bin5,"3#pi/2");
+  xAxis->SetBit(TAxis::kLabelsHori);
+  xAxis->SetLabelSize(0.075);
 }

@@ -32,6 +32,7 @@ class D0CorrPlotter
     // void plotCorrelation();
     void plotJetInvM();
     double getSBRatio() {return mSOverC;}
+    void setCorrAxis(TH1D *);
     TH1D *getSignalJetCorrelation(){return signalJetCorrelation;};
     TH1D *getBkgJetCorrelation(){return bkgJetCorrelation;};
     TH1D *getCandJetCorrelation(){return candJetCorrelation;};
