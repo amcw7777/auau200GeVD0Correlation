@@ -18,25 +18,26 @@
 class TFile;
 class TH2F;
 
-class D0jetCorrPlotter
+class D0CorrPlotter
 {
   public:
-    D0jetCorrPlotter() {}
-    ~D0jetCorrPlotter() {}
+    D0CorrPlotter() {}
+    ~D0CorrPlotter() {}
     void init(TString inputFileNamu);
     void finish();
-    void getPxCut(double);
-    void getCorrelation(std::pair<int,int> &, int);
+    void getJetCorrelation(std::pair<int,int> &,std::pair<double,double> &, int);
+    void getHadronCorrelation(std::pair<int,int> &,std::pair<double,double> &, int);
     void getCorrelation(int);
     void plotSignificance(TH2D *);
-    void plotCorrelation();
+    // void plotCorrelation();
     void plotJetInvM();
     double getSBRatio() {return mSOverC;}
-    TH1D *getSignalCorrelation(){return signalCorrelation;};
-    TH1D *getBkgCorrelation(){return bkgCorrelation;};
-    TH1D *getCandCorrelation(){return candCorrelation;};
-    TH1D *getCandCorrelationFar(){return candCorrelationFar;};
-    TH1D *getBkgCorrelationFar(){return bkgCorrelationFar;};
+    TH1D *getSignalJetCorrelation(){return signalJetCorrelation;};
+    TH1D *getBkgJetCorrelation(){return bkgJetCorrelation;};
+    TH1D *getCandJetCorrelation(){return candJetCorrelation;};
+    TH1D *getSignalHadronCorrelation(){return signalHadronCorrelation;};
+    TH1D *getBkgHadronCorrelation(){return bkgHadronCorrelation;};
+    TH1D *getCandHadronCorrelation(){return candHadronCorrelation;};
 
 
   private:
@@ -44,12 +45,11 @@ class D0jetCorrPlotter
     double getSBRatio(TH1D *massHisto);
     TFile *inputFile;
     ofstream mLog;
-    TH1D *signalCorrelation;
-    TH1D *candCorrelation;
-    TH1D *bkgCorrelation;
-    TH1D *candCorrelationClose;
-    TH1D *bkgCorrelationClose;
-    TH1D *candCorrelationFar;
-    TH1D *bkgCorrelationFar;
+    TH1D *signalJetCorrelation;
+    TH1D *candJetCorrelation;
+    TH1D *bkgJetCorrelation;
+    TH1D *signalHadronCorrelation;
+    TH1D *candHadronCorrelation;
+    TH1D *bkgHadronCorrelation;
     double mSOverC;
 };
