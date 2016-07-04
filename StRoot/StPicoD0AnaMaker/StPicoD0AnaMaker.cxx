@@ -316,7 +316,7 @@ Int_t StPicoD0AnaMaker::Make()
     float d0Pt = kp->pt();
     double d0Mass = kp->m();
     if(d0Pt>10) continue;
-    if(d0Pt<3)  continue;
+    if(d0Pt<1)  continue;
     int fitindex = 5;
     if(d0Pt<5)
       fitindex = static_cast<int>(d0Pt);
