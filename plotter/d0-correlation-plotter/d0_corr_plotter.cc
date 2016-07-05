@@ -426,12 +426,12 @@ void D0CorrPlotter::setCorrAxis(TH1D *corrPlot)
   // yAxis->SetLabelSize(0.6);
   yAxis->SetLabelFont(42);
 
-  xAxis->SetBit(TAxis::kLabelsHori);
-  xAxis->SetBinLabel(bin1,"-#pi/2");
-  xAxis->SetBinLabel(bin2,"0");
-  xAxis->SetBinLabel(bin3,"#pi/2");
-  xAxis->SetBinLabel(bin4,"#pi");
-  xAxis->SetBinLabel(bin5,"3#pi/2");
-  xAxis->SetBit(TAxis::kLabelsHori);
-  xAxis->SetLabelSize(0.075);
+  // xAxis->SetBit(TAxis::kLabelsHori);
+  // xAxis->SetBinLabel(bin1,"-#pi/2");
+  // xAxis->SetBinLabel(bin2,"0");
+  // xAxis->SetBinLabel(bin3,"#pi/2");
+  // xAxis->SetBinLabel(bin4,"#pi");
+  // xAxis->SetBinLabel(bin5,"3#pi/2");
+  // xAxis->SetBit(TAxis::kLabelsHori);
+  // xAxis->SetLabelSize(0.075);
 }

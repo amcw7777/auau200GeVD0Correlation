@@ -5,8 +5,10 @@ void plotD0Jet()
 {
   int inputRebinFactor = 50;
   D0CorrPlotter *plotter = new D0CorrPlotter();
+  D0CorrPlotter *plotter3 = new D0CorrPlotter();
   // plotter->init("root-files/dJCorrPt16.root");
   plotter->init("root-files/d0-corr-trig-1GeV.root");
+  plotter3->init("root-files/d0-corr-trig-3GeV.root");
 
   TCanvas *cJet[6];
   TLegend *legJet[6][9];
@@ -17,6 +19,13 @@ void plotD0Jet()
   TH1D *corrC[6];
   TH1D *corrB[6];
   TH1D *corrS[6];
+
+  TH1D *candJet3[6][9];
+  TH1D *bkgJet3[6][9];
+  TH1D *diff3[6][9];
+  TH1D *corrC3[6];
+  TH1D *corrB3[6];
+  TH1D *corrS3[6];
 
   TCanvas *cMB = new TCanvas();
   gStyle->SetOptStat(0);
@@ -72,22 +81,59 @@ void plotD0Jet()
     }
     cMB->cd(j+1);
     corrS[j]->Draw("pe");
-    corrB[j]->Draw("pe,same");
+    // corrB[j]->Draw("pe,same");
     // corrC[j]->Draw("pe,same");
     corrS[j]->SetLineColor(2);
     corrB[j]->SetLineColor(1);
     corrC[j]->SetLineColor(1);
     corrC[j]->SetLineStyle(2);
+  }
+  for(int j=0;j<6;j++)
+  {
+    for(int i=0;i<9;i++)
+    {
+      pair<int,int> inputCentralityBin(i+1,i+1);
+      pair<double,double> inputPtCut(j+3,100);
+      plotter3->getJetCorrelation(inputCentralityBin,inputPtCut,inputRebinFactor);
+      candJet3[j][i] = plotter3->getCandJetCorrelation();
+      bkgJet3[j][i] = plotter3->getBkgJetCorrelation();
+      cJet[j]->cd(i+1);
+
+      candJet3[j][i]->SetLineColor(1);
+      candJet3[j][i]->SetLineStyle(2);
+      bkgJet3[j][i]->SetLineColor(1);
+      double sOverC = plotter3->getSBRatio();
+      cout<<"sOverC = "<<sOverC<<endl;
+      TH1D *bkgTemp = (TH1D *)bkgJet3[j][i]->Clone("bkgTemp");
+      bkgTemp->Scale(1-sOverC);
+      diff3[j][i] = (TH1D *)candJet3[j][i]->Clone(Form("diff3%i",i));
+      diff3[j][i]->Add(bkgTemp,-1);
+      diff3[j][i]->Scale(1/sOverC);
+    }
+    corrS3[j] = (TH1D *)diff3[j][0]->Clone("corrS3");
+    corrB3[j] = (TH1D *)bkgJet3[j][0]->Clone("corrB3");
+    corrC3[j] = (TH1D *)candJet3[j][0]->Clone("corrC3");
+    for(int i=1;i<9;i++)
+    {
+      corrS3[j]->Add(diff3[j][i]);
+      corrB3[j]->Add(bkgJet3[j][i]);
+      corrC3[j]->Add(candJet3[j][i]);
+    }
+    cMB->cd(j+1);
+    corrS3[j]->Draw("pe,same");
+    // corrC3[j]->Draw("pe,same");
+    corrS3[j]->SetLineColor(1);
     legCorr[j] = new TLegend(0.3,0.2,0.7,0.35);
     legCorr[j]->SetHeader(Form("jet p_{T}>%iGeV/c,MB events",j+3));
-    legCorr[j]->AddEntry(corrS[j],"D^{0} signal");
-    legCorr[j]->AddEntry(corrB[j],"Side-band");
+    legCorr[j]->AddEntry(corrS[j],"D^{0} p_{T}>1GeV");
+    legCorr[j]->AddEntry(corrS3[j],"D^{0} p_{T}>3GeV");
     legCorr[j]->Draw("same");
   }
+
 }
 void plotD0Hadron()
 {
-  int inputRebinFactor = 50;
+  int inputRebinFactor = 100;
   D0CorrPlotter *plotter = new D0CorrPlotter();
   // plotter->init("root-files/dJCorrPt16.root");
   plotter->init("root-files/d0-corr-trig-3GeV.root");
