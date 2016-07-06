@@ -85,6 +85,7 @@ class StPicoD0AnaMaker : public StMaker
     bool isTofKaon(StPicoTrack const* const, float beta) const;
     float getTofBeta(StPicoTrack const*,StThreeVectorF const * pVtx) const;
     double getDca(StPicoTrack const* ) const;
+    void fillHadronJetCorr();
 
     StPicoDstMaker* mPicoDstMaker;
     StPicoD0Event* mPicoD0Event;
@@ -117,10 +118,12 @@ class StPicoD0AnaMaker : public StMaker
     THnSparseD *hD0HadronCorrCand;
     THnSparseD *hD0HadronCorrBkg;
     THnSparseD *hD0D0Corr;
+    THnSparseD *hHadronJetCorr;
 
     TH3F *massPt;
     TH2F *candCount;
     TH2F *bkgCount;
+    TH2F *hadronCount;
 
     TH3F *dcaCandJets;
     TH3F *dcaBkgJets;
