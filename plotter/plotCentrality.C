@@ -1,22 +1,25 @@
 #include "d0_corr_plotter.cc"
 #include "TStyle.h"
 #include "TLegend.h"
+
 void plotD0Jet()
 {
   int inputRebinFactor = 50;
   D0CorrPlotter *plotter = new D0CorrPlotter();
   // plotter->init("root-files/dJCorrPt16.root");
-  plotter->init("root-files/d0-corr-trig-1GeV.root");
+  plotter->init("root-files/d0-corr-trig-1.root");
 
   TCanvas *cJet[6];
   TLegend *legJet[6][9];
   TLegend *legCorr[6];
   TH1D *candJet[6][9];
+  TH1D *hadronJet[6][9];
   TH1D *bkgJet[6][9];
   TH1D *diff[6][9];
   TH1D *corrC[6];
   TH1D *corrB[6];
   TH1D *corrS[6];
+  TH1D *corrH[6];
 
   TCanvas *cMB = new TCanvas();
   gStyle->SetOptStat(0);
@@ -33,10 +36,13 @@ void plotD0Jet()
     for(int i=0;i<9;i++)
     {
       pair<int,int> inputCentralityBin(i+1,i+1);
-      pair<double,double> inputPtCut(j+3,100);
+      pair<double,double> inputPtCut(j+5,100);
       plotter->getJetCorrelation(inputCentralityBin,inputPtCut,inputRebinFactor);
+      plotter->getHadronJetCorrelation(inputCentralityBin,inputPtCut,inputRebinFactor);
       candJet[j][i] = plotter->getCandJetCorrelation();
       bkgJet[j][i] = plotter->getBkgJetCorrelation();
+      hadronJet[j][i] = plotter->getHadronJetCorrelation();
+
       cJet[j]->cd(i+1);
 
       candJet[j][i]->SetLineColor(1);
@@ -64,24 +70,29 @@ void plotD0Jet()
     corrS[j] = (TH1D *)diff[j][0]->Clone("corrS");
     corrB[j] = (TH1D *)bkgJet[j][0]->Clone("corrB");
     corrC[j] = (TH1D *)candJet[j][0]->Clone("corrC");
+    corrH[j] = (TH1D *)hadronJet[j][0]->Clone("corrC");
     for(int i=1;i<9;i++)
     {
       corrS[j]->Add(diff[j][i]);
       corrB[j]->Add(bkgJet[j][i]);
       corrC[j]->Add(candJet[j][i]);
+      corrH[j]->Add(hadronJet[j][i]);
     }
     cMB->cd(j+1);
-    corrS[j]->Draw("pe");
-    corrB[j]->Draw("pe,same");
+    // corrS[j]->Draw("pe");
+    // corrB[j]->Draw("pe,same");
+    corrH[j]->Draw("pe,same");
     // corrC[j]->Draw("pe,same");
     corrS[j]->SetLineColor(2);
     corrB[j]->SetLineColor(1);
+    corrH[j]->SetLineColor(4);
     corrC[j]->SetLineColor(1);
     corrC[j]->SetLineStyle(2);
     legCorr[j] = new TLegend(0.3,0.2,0.7,0.35);
-    legCorr[j]->SetHeader(Form("jet p_{T}>%iGeV/c,MB events",j+3));
+    legCorr[j]->SetHeader(Form("jet p_{T}>%iGeV/c,MB events",j+5));
     legCorr[j]->AddEntry(corrS[j],"D^{0} signal");
     legCorr[j]->AddEntry(corrB[j],"Side-band");
+    legCorr[j]->AddEntry(corrH[j],"Hadron-jet correlation");
     legCorr[j]->Draw("same");
   }
 }

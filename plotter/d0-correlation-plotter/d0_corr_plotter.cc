@@ -435,3 +435,19 @@ void D0CorrPlotter::setCorrAxis(TH1D *corrPlot)
   // xAxis->SetBit(TAxis::kLabelsHori);
   // xAxis->SetLabelSize(0.075);
 }
+void D0CorrPlotter::getHadronJetCorrelation(pair<int,int> &centralityBinCut,pair<double,double> &ptCut,int rebinFactor)
+{
+  THnSparseD *hadronJetCorr= (THnSparseD *)inputFile->Get("hHadronJetCorr")->Clone("hadronJetCorr");
+  TH2F *hadronCount = (TH2F *)inputFile->Get("hadronCount")->Clone("hadronCount");
+
+  double nHadron = hadronCount->ProjectionX("hadronCount1D",centralityBinCut.first,centralityBinCut.second)->Integral();
+
+  hadronJetCorr->GetAxis(1)->SetRange(centralityBinCut.first,centralityBinCut.second);
+  hadronJetCorr->GetAxis(2)->SetRangeUser(ptCut.first,ptCut.second);
+	hadronJetCorrelation = (TH1D *)hadronJetCorr->Projection(0)->Clone("hadronJetCorrelation");
+  setCorrAxis(hadronJetCorrelation);
+  // get hadronidate correlation
+	hadronJetCorrelation->Rebin(rebinFactor);
+	hadronJetCorrelation->Scale(1./hadronJetCorrelation->GetBinWidth(1)/nHadron);
+}
+

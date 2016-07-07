@@ -27,6 +27,7 @@ class D0CorrPlotter
     void finish();
     void getJetCorrelation(std::pair<int,int> &,std::pair<double,double> &, int);
     void getHadronCorrelation(std::pair<int,int> &,std::pair<double,double> &, int);
+    void getHadronJetCorrelation(std::pair<int,int> &,std::pair<double,double> &, int);
     void getCorrelation(int);
     void plotSignificance(TH2D *);
     // void plotCorrelation();
@@ -39,6 +40,7 @@ class D0CorrPlotter
     TH1D *getSignalHadronCorrelation(){return signalHadronCorrelation;};
     TH1D *getBkgHadronCorrelation(){return bkgHadronCorrelation;};
     TH1D *getCandHadronCorrelation(){return candHadronCorrelation;};
+    TH1D *getHadronJetCorrelation(){return hadronJetCorrelation;};
 
 
   private:
@@ -52,5 +54,6 @@ class D0CorrPlotter
     TH1D *signalHadronCorrelation;
     TH1D *candHadronCorrelation;
     TH1D *bkgHadronCorrelation;
+    TH1D *hadronJetCorrelation;
     double mSOverC;
 };
