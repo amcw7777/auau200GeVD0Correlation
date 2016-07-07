@@ -323,7 +323,7 @@ Int_t StPicoD0AnaMaker::Make()
     float d0Pt = kp->pt();
     double d0Mass = kp->m();
     if(d0Pt>10) continue;
-    if(d0Pt<1)  continue;
+    if(d0Pt<3)  continue;
     int fitindex = 5;
     if(d0Pt<5)
       fitindex = static_cast<int>(d0Pt);
@@ -714,7 +714,7 @@ void StPicoD0AnaMaker::fillHadronJetCorr()
   {
     StPicoTrack const* mTrack = picoDst->track(i);
     if(!isGoodHadron(mTrack)) continue;
-    if(mTrack->gPt()<1) continue;
+    if(mTrack->gPt()<3) continue;
 
     double hadronPhi = mTrack->gMom(pVtx,field).phi();
     hadronCount->Fill(1,centrality);
