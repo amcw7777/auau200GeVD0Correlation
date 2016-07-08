@@ -243,6 +243,7 @@ Int_t StPicoD0AnaMaker::Make()
   if(centrality>=7) centBin=1;
   else if(centrality>=4)  centBin=2;
   else centBin=3;
+  fillHadronJetCorr();
 
   //Jet definition
   double jet_R = 0.2;
