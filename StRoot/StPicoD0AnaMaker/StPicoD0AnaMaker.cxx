@@ -105,25 +105,35 @@ Int_t StPicoD0AnaMaker::Init()
   hJetPt = new TH1F("hJetPt","",100,0,10);
   hHadronPt = new TH1F("hHadronPt","",100,0,10);
   candCount = new TH2F("candCount","",1,0.5,1.5,10,0,10);                   
-  bkgCount = new TH2F("bkgCount","",1,0.5,1.5,10,0,10);
+  bkgCount = new TH2F("bkgCount","bkgcount;sbType; centrality bin",10,-1.5,8.5,10,0,10);
   hadronCount = new TH2F("hadronCount","",1,0.5,1.5,10,0,10);
   // phiRun = new TH2F("phiRun","",60018,15107000,15167018,1000,-1.*pi,1.*pi);
   // mOutputFile->cd();
 
-  const int NDim = 3;// dPhi, centrality, pT
-  const int NBinNumber[NDim] = {1000,10,100};
-  const double XMin[NDim] = {-1.6,0,0};
-  const double XMax[NDim] = {4.8,10,100};
+  const int NDim = 4;// dPhi, centrality, pT
+  const int NBinNumber[NDim] = {1000,10,100,100};
+  const double XMin[NDim] = {-1.6,0,0,0};
+  const double XMax[NDim] = {4.8,10,100,10};
 
-  hD0JetCorrCand = new THnSparseD("hD0JetCorrCand","(1/N_{trig})(dN_{trig}/d#Delta#phi);#Delta #phi;centrality bin ; pT (GeV/c)",NDim,NBinNumber,XMin,XMax);
-  hD0JetCorrBkg = new THnSparseD("hD0JetCorrBkg","(1/N_{trig})(dN_{trig}/d#Delta#phi);#Delta #phi;centrality bin;pT (GeV/c)",NDim,NBinNumber,XMin,XMax);
+  hD0JetCorrCand = new THnSparseD("hD0JetCorrCand","(1/N_{trig})(dN_{trig}/d#Delta#phi);#Delta #phi;centrality bin ; pT (GeV/c); D^{0} p_{T} (GeV/c)",NDim,NBinNumber,XMin,XMax);
+  hD0JetCorrBkg = new THnSparseD("hD0JetCorrBkg","(1/N_{trig})(dN_{trig}/d#Delta#phi);#Delta #phi;centrality bin;pT (GeV/c); D^{0} p_{T} (GeV/c)",NDim,NBinNumber,XMin,XMax);
   hD0JetCorrCand->Sumw2();
   hD0JetCorrBkg->Sumw2();
 
-  hD0HadronCorrCand = new THnSparseD("hD0HadronCorrCand","(1/N_{trig})(dN_{trig}/d#Delta#phi);#Delta #phi;centrality bin;pT (GeV/c)",NDim,NBinNumber,XMin,XMax);
-  hD0HadronCorrBkg = new THnSparseD("hD0HadronCorrBkg","(1/N_{trig})(dN_{trig}/d#Delta#phi);#Delta #phi;centrality bin;pT (GeV/c)",NDim,NBinNumber,XMin,XMax);
+
+  hD0HadronCorrCand = new THnSparseD("hD0HadronCorrCand","(1/N_{trig})(dN_{trig}/d#Delta#phi);#Delta #phi;centrality bin;pT (GeV/c); D^{0} p_{T} (GeV/c)",NDim,NBinNumber,XMin,XMax);
   hD0HadronCorrCand->Sumw2();
+  hD0HadronCorrBkg = new THnSparseD("hD0HadronCorrBkg","(1/N_{trig})(dN_{trig}/d#Delta#phi);#Delta #phi;centrality bin;pT (GeV/c); D^{0} p_{T} (GeV/c)",NDim,NBinNumber,XMin,XMax);
   hD0HadronCorrBkg->Sumw2();
+
+  const int NDimSB = 5;// dPhi, centrality, pT,type
+  const int NBinNumberSB[NDimSB] = {1000,10,100,100,10};
+  const double XMinSB[NDimSB] = {-1.6,0,0,0,0};
+  const double XMaxSB[NDimSB] = {4.8,10,100,10,10};
+  hD0JetCorrSB = new THnSparseD("hD0JetCorrSB","(1/N_{trig})(dN_{trig}/d#Delta#phi);#Delta #phi;centrality bin;pT (GeV/c); D^{0} p_{T} (GeV/c);SB type",NDimSB,NBinNumberSB,XMinSB,XMaxSB);
+  hD0JetCorrSB->Sumw2();
+  hD0HadronCorrSB = new THnSparseD("hD0HadronCorrSB","(1/N_{trig})(dN_{trig}/d#Delta#phi);#Delta #phi;centrality bin;pT (GeV/c); D^{0} p_{T} (GeV/c);SB type",NDimSB,NBinNumberSB,XMinSB,XMaxSB);
+  hD0HadronCorrSB->Sumw2();
 
   const int NDimD0 = 4;// dPhi, centrality, pT
   const int NBinNumberD0[NDimD0] = {1000,10,100,5};
@@ -174,8 +184,10 @@ Int_t StPicoD0AnaMaker::Finish()
 
   hD0JetCorrCand->Write();
   hD0JetCorrBkg->Write();
+  hD0JetCorrSB->Write();
   hD0HadronCorrCand->Write();
   hD0HadronCorrBkg->Write();
+  hD0HadronCorrSB->Write();
   hD0D0Corr->Write();
   hHadronJetCorr->Write();
 
@@ -324,7 +336,7 @@ Int_t StPicoD0AnaMaker::Make()
     float d0Pt = kp->pt();
     double d0Mass = kp->m();
     if(d0Pt>10) continue;
-    if(d0Pt<3)  continue;
+    if(d0Pt<1)  continue;
     int fitindex = 5;
     if(d0Pt<5)
       fitindex = static_cast<int>(d0Pt);
@@ -342,10 +354,17 @@ Int_t StPicoD0AnaMaker::Make()
     bool isBkg = (d0Mass>mean-9*sigma && d0Mass<mean-4*sigma) ||
       (d0Mass<mean+9*sigma && d0Mass>mean+4*sigma) ||
       (d0Mass>mean-3*sigma && d0Mass<mean+3*sigma && charge==0);
+    int sbType = -1;
+    if(d0Mass>mean-3*sigma && d0Mass<mean+3*sigma && charge==0)  sbType = 1;
+    if(d0Mass>mean-9*sigma && d0Mass<mean-4*sigma && charge==0)  sbType = 2;
+    if(d0Mass>mean-9*sigma && d0Mass<mean-4*sigma && charge!=0)  sbType = 3;
+    if(d0Mass<mean+9*sigma && d0Mass>mean+4*sigma && charge==0)  sbType = 4;
+    if(d0Mass<mean+9*sigma && d0Mass>mean+4*sigma && charge!=0)  sbType = 5;
     if(isCand)
       candCount->Fill(1,centrality);
     if(isBkg)
-      bkgCount->Fill(1,centrality);
+      bkgCount->Fill((double)0,centrality);
+    bkgCount->Fill(sbType,centrality);
 
     cout<<"is tracks = "<<hCount[0]<<endl;
     cout<<"pass # hits = "<<hCount[1]<<endl;
@@ -374,11 +393,15 @@ Int_t StPicoD0AnaMaker::Make()
       double deltaPhi = (hadron_phi-kp->phi());
       if(deltaPhi<-0.5*pi)  deltaPhi += 2*pi;
       if(deltaPhi>1.5*pi)  deltaPhi -= 2*pi;
-      double hadronFill[] = {deltaPhi,(double)centrality,trackPt};
+      double hadronFill[] = {deltaPhi,(double)centrality,trackPt,d0Pt};
+      double hadronFillSB[] = {deltaPhi,(double)centrality,trackPt,d0Pt,(double)sbType};
       if(isCand)
         hD0HadronCorrCand->Fill(hadronFill,reweight);
       if(isBkg)
+      {
         hD0HadronCorrBkg->Fill(hadronFill,reweight);
+        hD0HadronCorrSB->Fill(hadronFillSB,reweight);
+      }
     }
 //////////////////////////////////////
 ///// Loop to do D0-jetcorrelation
@@ -389,11 +412,15 @@ Int_t StPicoD0AnaMaker::Make()
       double deltaPhi = (mInclusiveJets[i].phi()-kp->phi());
       if(deltaPhi<-0.5*pi)  deltaPhi += 2*pi;
       if(deltaPhi>1.5*pi)  deltaPhi -= 2*pi;
-      double jetFill[] = {deltaPhi,(double)centrality,mInclusiveJets[i].pt()};
+      double jetFill[] = {deltaPhi,(double)centrality,mInclusiveJets[i].pt(),d0Pt};
+      double jetFillSB[] = {deltaPhi,(double)centrality,mInclusiveJets[i].pt(),d0Pt,(double)sbType};
       if(isCand)
         hD0JetCorrCand->Fill(jetFill,reweight);
       if(isBkg)
+      {
         hD0JetCorrBkg->Fill(jetFill,reweight);
+        hD0JetCorrSB->Fill(jetFillSB,reweight);
+      }
       std::vector<fastjet::PseudoJet> constituents = mInclusiveJets[i].constituents();
       for(unsigned int iC=0;iC<constituents.size();iC++)
       {

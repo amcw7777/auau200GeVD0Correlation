@@ -115,8 +115,10 @@ class StPicoD0AnaMaker : public StMaker
 
     THnSparseD *hD0JetCorrCand;
     THnSparseD *hD0JetCorrBkg;
+    THnSparseD *hD0JetCorrSB;
     THnSparseD *hD0HadronCorrCand;
     THnSparseD *hD0HadronCorrBkg;
+    THnSparseD *hD0HadronCorrSB;
     THnSparseD *hD0D0Corr;
     THnSparseD *hHadronJetCorr;
 
