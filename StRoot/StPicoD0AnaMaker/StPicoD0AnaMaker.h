@@ -27,6 +27,7 @@
 #include "TH1D.h"
 #include "TH3D.h"
 #include "TH2F.h"
+#include "TNtuple.h"
 #include "TProfile.h"
 #include "THnSparse.h"
 #include "StiMaker/StKFVerticesCollection.h"
@@ -132,6 +133,8 @@ class StPicoD0AnaMaker : public StMaker
     TH3F *invMCandJets;
     TH3F *invMBkgJets;
     // vector<PseudoJet> mInclusiveJets;
+    TH1D *daughterDup;
+    TNtuple *dDaughterTuple;
 
     // double fitsigma[6];
     // double fitmean[6];

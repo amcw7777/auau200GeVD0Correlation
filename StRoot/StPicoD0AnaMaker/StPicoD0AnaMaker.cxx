@@ -152,6 +152,8 @@ Int_t StPicoD0AnaMaker::Init()
   dcaBkgJets = new TH3F("dcaBkgJets","",10000,0,10,6,0,3.1416,10,0,10);
   invMCandJets = new TH3F("invMCandJets","",1000,0,10,6,0,3.1416,10,0,10);
   invMBkgJets = new TH3F("invMBkgJets","",1000,0,10,6,0,3.1416,10,0,10);
+  dDaughterTuple = new TNtuple("dDaughterTuple","tuple to store pT of d daughters","dPt:type:kaonPt:pionPt");
+  daughterDup = new TH1D("daughterDup","",10,0,10);
 
   // -------------- USER VARIABLES -------------------------
   mGRefMultCorrUtil = new StRefMultCorr("grefmult");
@@ -194,6 +196,8 @@ Int_t StPicoD0AnaMaker::Finish()
   invMCandJets->Write();
   invMBkgJets->Write();
 
+  dDaughterTuple->Write();
+  daughterDup->Write();
   mOutputFile->Close();
   delete mPrescales;
 
@@ -270,6 +274,7 @@ Int_t StPicoD0AnaMaker::Make()
   double fitmean[6] = {1.85921,1.8633,1.86403,1.86475,1.86252,1.86534};
   double fitsigma[6] = {0.018139,0.0139476,0.0158346,0.0169282,0.0199567,0.0189131};
   double d_counting = 0;
+  vector<int> bkgKaon,bkgPion,candKaon,candPion;
   for (int idx = 0; idx < aKaonPion->GetEntries(); ++idx)
   {
     StKaonPion const* kp = (StKaonPion*)aKaonPion->At(idx);
@@ -360,10 +365,23 @@ Int_t StPicoD0AnaMaker::Make()
     if(d0Mass>mean-9*sigma && d0Mass<mean-4*sigma && charge!=0)  sbType = 3;
     if(d0Mass<mean+9*sigma && d0Mass>mean+4*sigma && charge==0)  sbType = 4;
     if(d0Mass<mean+9*sigma && d0Mass>mean+4*sigma && charge!=0)  sbType = 5;
+    int pairType = 0;
     if(isCand)
+    {
       candCount->Fill(1,centrality);
+      pairType = 1;
+      candPion.push_back(kp->pionIdx());
+      candKaon.push_back(kp->kaonIdx());
+    }
     if(isBkg)
+    {
       bkgCount->Fill((double)0,centrality);
+      pairType = 2;
+      bkgPion.push_back(kp->pionIdx());
+      bkgKaon.push_back(kp->kaonIdx());
+    }
+    float daughterFill[] = {d0Pt,(float)pairType,kaon->gPt(),pion->gPt()};
+    dDaughterTuple->Fill(daughterFill); 
     bkgCount->Fill(sbType,centrality);
 
     cout<<"is tracks = "<<hCount[0]<<endl;
@@ -479,8 +497,26 @@ Int_t StPicoD0AnaMaker::Make()
       double d0Fill[] = {deltaPhi,(double)centrality,d0PtAcc,(double)indexCor};
       hD0D0Corr->Fill(d0Fill,reweight);
     }
-
   }
+  for(int i=0;i<bkgKaon.size();i++)
+  {
+    daughterDup->Fill(1);
+    for(int j=0;j<candKaon.size();j++)
+      if(bkgKaon[i]==candKaon[j])
+        daughterDup->Fill(5);
+  }
+  for(int i=0;i<bkgPion.size();i++)
+  {
+    daughterDup->Fill(2);
+    for(int j=0;j<candPion.size();j++)
+      if(bkgPion[i]==candPion[j])
+        daughterDup->Fill(6);
+  }
+  for(int i=0;i<candKaon.size();i++)
+    daughterDup->Fill(3);
+  for(int i=0;i<candPion.size();i++)
+    daughterDup->Fill(4);
+  
   return kStOK;
 }
 //-----------------------------------------------------------------------------
