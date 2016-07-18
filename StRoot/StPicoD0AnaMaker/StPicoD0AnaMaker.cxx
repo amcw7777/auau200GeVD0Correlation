@@ -307,13 +307,17 @@ Int_t StPicoD0AnaMaker::Make()
       if(!mTrack) continue;
       if(mTrack->nHitsFit()<20) continue;
       if(1.0*mTrack->nHitsFit()/mTrack->nHitsMax()<0.52) continue;
-      if(mTrack->gPt()<0.2) continue;
+      if(mTrack->pMom().perp()<0.2) continue;
+      // if(mTrack->gPt()<0.2) continue;
       double trackDca = getDca(mTrack);
       if(trackDca>3)  continue;
       if(dDaughters.find(i) != dDaughters.end())  continue;
-      double trackPx = mTrack->gMom(pVtx,field).x();   
-      double trackPy = mTrack->gMom(pVtx,field).y();   
-      double trackPz = mTrack->gMom(pVtx,field).z();   
+      // double trackPx = mTrack->gMom(pVtx,field).x();   
+      // double trackPy = mTrack->gMom(pVtx,field).y();   
+      // double trackPz = mTrack->gMom(pVtx,field).z();   
+      double trackPx = mTrack->pMom().x();   
+      double trackPy = mTrack->pMom().y();   
+      double trackPz = mTrack->pMom().z();   
       double trackM = 0.13957;
       if(isTpcKaon(mTrack,&pVtx))
         trackM = 0.493667;
@@ -370,15 +374,21 @@ Int_t StPicoD0AnaMaker::Make()
     {
       candCount->Fill(1,centrality);
       pairType = 1;
-      candPion.push_back(kp->pionIdx());
-      candKaon.push_back(kp->kaonIdx());
+      if(d0Pt>3)
+      {
+        candPion.push_back(kp->pionIdx());
+        candKaon.push_back(kp->kaonIdx());
+      }
     }
     if(isBkg)
     {
       bkgCount->Fill((double)0,centrality);
       pairType = 2;
-      bkgPion.push_back(kp->pionIdx());
-      bkgKaon.push_back(kp->kaonIdx());
+      if(d0Pt>3)
+      {
+        bkgPion.push_back(kp->pionIdx());
+        bkgKaon.push_back(kp->kaonIdx());
+      }
     }
     float daughterFill[] = {d0Pt,(float)pairType,kaon->gPt(),pion->gPt()};
     dDaughterTuple->Fill(daughterFill); 
@@ -400,13 +410,15 @@ Int_t StPicoD0AnaMaker::Make()
       if(!mTrack) continue;
       if(mTrack->nHitsFit()<20) continue;
       if(1.0*mTrack->nHitsFit()/mTrack->nHitsMax()<0.52) continue;
-      if(mTrack->gPt()<hadronPtCut) continue;
+      // double trackPt = mTrack->gPt();
+      // double hadron_phi = mTrack->gMom(pVtx,field).phi();
+      double hadron_phi = mTrack->pMom().phi();
+      double trackPt = mTrack->pMom().perp();
+      if(trackPt<hadronPtCut) continue;
       double trackDca = getDca(mTrack);
       if(trackDca>3)  continue;
-      hHadronPt->Fill(mTrack->gPt());
+      hHadronPt->Fill(trackPt);
       if(dDaughters.find(i) != dDaughters.end())  continue;
-      double hadron_phi = mTrack->gMom(pVtx,field).phi();
-      double trackPt = mTrack->gPt();
 
       double deltaPhi = (hadron_phi-kp->phi());
       if(deltaPhi<-0.5*pi)  deltaPhi += 2*pi;
