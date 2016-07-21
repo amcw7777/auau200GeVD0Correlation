@@ -7,7 +7,8 @@ void plotD0Jet()
   int inputRebinFactor = 50;
   D0CorrPlotter *plotter = new D0CorrPlotter();
   // plotter->init("root-files/dJCorrPt16.root");
-  plotter->init("root-files/d0-corr-trig-1.root");
+  // plotter->init("root-files/d0-corr-trig-3GeV.root");
+  plotter->init("root-files/d0CorrelationGlobal.root");
 
   TCanvas *cJet[6];
   TLegend *legJet[6][9];
@@ -37,7 +38,8 @@ void plotD0Jet()
     {
       pair<int,int> inputCentralityBin(i+1,i+1);
       pair<double,double> inputPtCut(j+5,100);
-      plotter->getJetCorrelation(inputCentralityBin,inputPtCut,inputRebinFactor);
+      pair<double,double> inputD0PtCut(3,10);
+      plotter->getJetCorrelation(inputCentralityBin,inputPtCut,inputRebinFactor,inputD0PtCut);
       plotter->getHadronJetCorrelation(inputCentralityBin,inputPtCut,inputRebinFactor);
       candJet[j][i] = plotter->getCandJetCorrelation();
       bkgJet[j][i] = plotter->getBkgJetCorrelation();
@@ -79,19 +81,27 @@ void plotD0Jet()
       corrH[j]->Add(hadronJet[j][i]);
     }
     cMB->cd(j+1);
-    // corrS[j]->Draw("pe");
-    // corrB[j]->Draw("pe,same");
-    corrH[j]->Draw("pe,same");
-    // corrC[j]->Draw("pe,same");
+    // corrS[j]->Scale(0.1);
+    // corrC[j]->Scale(0.1);
+    // corrB[j]->Scale(0.1);
+    // corrH[j]->Scale(0.1);
+    corrS[j]->Draw("pe");
+    corrB[j]->Draw("pe,same");
+    // corrH[j]->Draw("pe,same");
+    corrC[j]->Draw("pe,same");
     corrS[j]->SetLineColor(2);
     corrB[j]->SetLineColor(1);
-    corrH[j]->SetLineColor(4);
     corrC[j]->SetLineColor(1);
     corrC[j]->SetLineStyle(2);
+
+    corrH[j]->SetLineColor(4);
+    corrH[j]->SetMarkerColor(4);
+    corrH[j]->SetMarkerStyle(20);
     legCorr[j] = new TLegend(0.3,0.2,0.7,0.35);
     legCorr[j]->SetHeader(Form("jet p_{T}>%iGeV/c,MB events",j+5));
     legCorr[j]->AddEntry(corrS[j],"D^{0} signal");
     legCorr[j]->AddEntry(corrB[j],"Side-band");
+    legCorr[j]->AddEntry(corrC[j],"Candidates");
     legCorr[j]->AddEntry(corrH[j],"Hadron-jet correlation");
     legCorr[j]->Draw("same");
   }
@@ -168,7 +178,7 @@ void plotD0Hadron()
     cMB->cd(j+1);
     corrS[j]->Draw("pe");
     corrB[j]->Draw("pe,same");
-    // corrC[j]->Draw("pe,same");
+    corrC[j]->Draw("pe,same");
     corrS[j]->SetLineColor(2);
     corrB[j]->SetLineColor(1);
     corrC[j]->SetLineColor(1);
@@ -176,6 +186,7 @@ void plotD0Hadron()
     legCorr[j] = new TLegend(0.3,0.2,0.7,0.35);
     legCorr[j]->SetHeader(Form("hadron p_{T}>%iGeV/c,MB events",j+3));
     legCorr[j]->AddEntry(corrS[j],"D^{0} signal");
+    legCorr[j]->AddEntry(corrC[j],"Candidates");
     legCorr[j]->AddEntry(corrB[j],"Side-band");
     legCorr[j]->Draw("same");
   }

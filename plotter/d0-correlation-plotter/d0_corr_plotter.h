@@ -25,7 +25,7 @@ class D0CorrPlotter
     ~D0CorrPlotter() {}
     void init(TString inputFileNamu);
     void finish();
-    void getJetCorrelation(std::pair<int,int> &,std::pair<double,double> &, int);
+    void getJetCorrelation(std::pair<int,int> &,std::pair<double,double> &, int,pair<double,double> &);
     void getHadronCorrelation(std::pair<int,int> &,std::pair<double,double> &, int);
     void getHadronJetCorrelation(std::pair<int,int> &,std::pair<double,double> &, int);
     void getCorrelation(int);
