@@ -2,11 +2,14 @@
 #include <fstream>
 #include <string>
 #include <cmath>
+#include <set>
 
 #include "TFile.h"
 #include "TClonesArray.h"
 #include "TTree.h"
 #include "TNtuple.h"
+#include "TRandom.h"
+#include "TLorentzVector.h"
 
 #include "phys_constants.h"
 #include "StBTofUtil/tofPathLength.hh"
@@ -16,7 +19,6 @@
 #include "StPicoDstMaker/StPicoTrack.h"
 #include "StPicoD0EventMaker/StPicoD0Event.h"
 #include "StPicoD0EventMaker/StKaonPion.h"
-#include "StPicoD0AnaMaker.h"
 #include "StPicoDstMaker/StPicoBTofPidTraits.h"
 #include "StCuts.h"
 #include "../StPicoPrescales/StPicoPrescales.h"
@@ -36,6 +38,17 @@
 #include <stdio.h>
 #include <time.h>
 #include <algorithm>
+// Jet reconstruction lib
+#include "TStarJetVectorContainer.h"
+#include "TStarJetVector.h"
+#include "fastjet/PseudoJet.hh"
+#include "fastjet/PseudoJet.hh"
+#include "fastjet/JetDefinition.hh"
+#include "fastjet/AreaDefinition.hh"
+#include "fastjet/AreaDefinition.hh"
+#include "fastjet/ClusterSequence.hh"
+#include "fastjet/ClusterSequenceArea.hh"
+#include "StPicoD0AnaMaker.h"
 
 ClassImp(StPicoD0AnaMaker)
 
@@ -47,7 +60,6 @@ ClassImp(StPicoD0AnaMaker)
 Int_t StPicoD0AnaMaker::Init()
 {
   mPicoD0Event = new StPicoD0Event();
-  fout.open("check.txt");
 
   mChain = new TChain("T");
   std::ifstream listOfFiles(mInputFileList.Data());
@@ -73,91 +85,75 @@ Int_t StPicoD0AnaMaker::Init()
   mChain->SetBranchAddress("dEvent", &mPicoD0Event);
 
   mOutputFile = new TFile(mOutFileName.Data(), "RECREATE");
-  mHadronTuple = new TNtuple("mHadronTuple","","sum1:sin1:cos1:sum2:sin2:cos2:cent:reweight");
-  etaPhi = new TH2F("etaPhi","",200,-6.29,6.29,100,0.5,1.5);
-  etaPhi_D = new TH2F("etaPhiD","",100,-3.1416,3.1416,100,-2,2);
-  etaPhi_Hadron = new TH2F("etaPhiHadron","",100,-3.1416,3.1416,100,-2,2);
-  etaPhi_Hadron_all = new TH2F("etaPhiHadronAll","",100,-3.1416,3.1416,100,-2,2);
-  dEtaDHadron = new TH1F("dEtaDHadron","",1000,0,10);
-  hEtaD = new TH1F("hEtaD","",1000,0,10);
-  hEtaHadron = new TH1F("hEtaHadron","",1000,0,10);
-  hPhiHadron = new TH1F("hPhiHadron","",10000,-5,5);
-  hPhiD= new TH1F("hPhiD","",10000,-5,5);
-  vtxz = new TH1F("vtxz","",100,-10,10);
-  TString flatten[5];
-  flatten[0] = "v2";
-  flatten[1] = "cosD";
-  flatten[2] = "sinD";
-  flatten[3] = "cosHadron";
-  flatten[4] = "sinHadron";
-  TString sb[8] = {"s1like","s3like","hSBlike","lSBlike","s1unlike","s3unlike","hSBunlike","lSBunlike"};
-  float xbin[7] = {0,1,2,3,4,5,10};
-  float binMass[51];
-  for(int i=0;i<51;i++)
-    binMass[i] = 1.6+0.01*i;
-  massPt = new TH2D("massPt","",50,binMass,6,xbin);
-  massPtLike = new TH2D("massPtLike","",50,binMass,6,xbin);
-  massLike1 = new TH2D("massLike1","",50,binMass,6,xbin);
-  massLike2 = new TH2D("massLike2","",50,binMass,6,xbin);
-  massUnlike = new TH2D("massUnlike","",50,binMass,6,xbin);
-  for(int i=0;i!=8;i++)
-  {
-    for(int k=0;k!=3;k++)
-    {
-      for(int j=0;j!=5;j++)
-      {
-        TString name = sb[i]+flatten[j]+Form("_%i",k);
-        profV2[i][j][k] = new TProfile(name.Data(),"",6,xbin);
-      }
-      TString weightName = sb[i]+Form("_%i_weigth",k);
-      float xWeight[10];
-      for(int ii=0;ii<10;ii++)
-        xWeight[ii] = ii;
-      v2Weight[i][k] = new TH2D(weightName.Data(),"",9,xWeight,6,xbin);
-
-    }
-  }
-  float ptbin1[12] = {0.225,0.375,0.525,0.675,0.825,0.975,1.12,1.27,1.42,1.58,1.73,1.88};
-  float ptbin2[11];
-  for(int i=0;i<11;i++)
-    ptbin2[i] = 0.5*(ptbin1[i]+ptbin1[i+1]);
-  for(int i=0;i<5;i++)
-  {
-    hadronV2[i] = new TH1D(Form("hadron_%s",flatten[i].Data()),"",9,0,9);
-    hadronV2[i]->Sumw2();
-    hadronV2_sum[i] = new TH1D(Form("hadronsum_%s",flatten[i].Data()),"",9,0,9);
-    hadronV2_sum[i]->Sumw2();
-    for(int j=0;j<9;j++)
-    {
-      hadronV2_excl[i][j] = new TH1D(Form("hadron_%s_cent%i",flatten[i].Data(),j),"",10,ptbin2);
-      hadronV2_excl[i][j]->Sumw2();
-      hadronV2_excl_sum[i][j] = new TH1D(Form("hadronsum_%s_cent%i",flatten[i].Data(),j),"",10,ptbin2);
-      hadronV2_excl_sum[i][j]->Sumw2();
-    }
-  }
- // fitmean = {1.8602,1.8626,1.8639,1.8645,1.8619,1.8619};
-  //fitsigma = {0.0149,0.0146,0.0153,0.0167,0.0184,0.0184};
-  fitmean = {1.85921,1.8633,1.86403,1.86475,1.86252,1.86534};
-  fitsigma = {0.018139,0.0139476,0.0158346,0.0169282,0.0199567,0.0189131};
-  for(int i=0;i<6;i++)//pt bin
-  {
-    for(int j=0;j<5;j++)//flatten
-    {
-      TString likename1 = Form("likeMass0%i",i)+flatten[j];
-      TString likename2 = Form("likeMass1%i",i)+flatten[j];
-      TString unlikename = Form("unlikeMass%i",i)+flatten[j];
-      likeV2Mass1[i][j] = new TH2D(likename1.Data(),"",18,fitmean[i]-9*fitsigma[i],fitmean[i]+9*fitsigma[i],1000,-1,1);
-      likeV2Mass2[i][j] = new TH2D(likename2.Data(),"",18,fitmean[i]-9*fitsigma[i],fitmean[i]+9*fitsigma[i],1000,-1,1);
-      unlikeV2Mass[i][j] = new TH2D(unlikename.Data(),"",18,fitmean[i]-9*fitsigma[i],fitmean[i]+9*fitsigma[i],1000,-1,1);
-    }
-  }
-  checkNew = new TNtuple("checkNew","","dphi:mass:pT:charge");
-  checkOld = new TNtuple("checkOld","","dphi:mass:pT:charge");
-  checkPeak = new TH2D("checkPeak","",18,fitmean[4]-9*fitsigma[4],fitmean[4]+9*fitsigma[4],100,-1,1);
-  
+//  phiFix = new TFile("phiFix.root");
+  // phiWeight2D = (TH2D *)phiFix->Get("phiWeight")->Clone("phiWeight2D");
 
   mOutputFile->cd();
 
+  float xbin[7] = {0,1,2,3,4,5,10};                                     
+  float binMass[2001];
+  float binCent[10];
+  for(int i=0;i<2001;i++)                                               
+    binMass[i] = 0.01*i; 
+  for(int i=0;i<10;i++)
+    binCent[i] = 1.0*i;
+  massPt = new TH3F("massPt","",2000,binMass,6,xbin,9,binCent);
+  massPt->Sumw2();
+
+  vtxz = new TH1F("vtxz","",100,-10,10);
+  dCount = new TH1F("dCount","dCount",10,0,10);
+  hJetPt = new TH1F("hJetPt","",100,0,10);
+  hHadronPt = new TH1F("hHadronPt","",100,0,10);
+  candCount = new TH2F("candCount","",10,0,10,10,0,10);                   
+  bkgCount = new TH2F("bkgCount","bkgcount;pT; centrality bin",10,0,10,10,0,10);
+  hadronCount = new TH2F("hadronCount","",100,0,10,10,0,10);
+  // phiRun = new TH2F("phiRun","",60018,15107000,15167018,1000,-1.*pi,1.*pi);
+  // mOutputFile->cd();
+
+  const int NDim = 4;// dPhi, centrality, pT
+  const int NBinNumber[NDim] = {1000,10,100,100};
+  const double XMin[NDim] = {-1.6,0,0,0};
+  const double XMax[NDim] = {4.8,10,100,10};
+
+  hD0JetCorrCand = new THnSparseD("hD0JetCorrCand","(1/N_{trig})(dN_{trig}/d#Delta#phi);#Delta #phi;centrality bin ; pT (GeV/c); D^{0} p_{T} (GeV/c)",NDim,NBinNumber,XMin,XMax);
+  hD0JetCorrBkg = new THnSparseD("hD0JetCorrBkg","(1/N_{trig})(dN_{trig}/d#Delta#phi);#Delta #phi;centrality bin;pT (GeV/c); D^{0} p_{T} (GeV/c)",NDim,NBinNumber,XMin,XMax);
+  hD0JetCorrCand->Sumw2();
+  hD0JetCorrBkg->Sumw2();
+
+
+  hD0HadronCorrCand = new THnSparseD("hD0HadronCorrCand","(1/N_{trig})(dN_{trig}/d#Delta#phi);#Delta #phi;centrality bin;pT (GeV/c); D^{0} p_{T} (GeV/c)",NDim,NBinNumber,XMin,XMax);
+  hD0HadronCorrCand->Sumw2();
+  hD0HadronCorrBkg = new THnSparseD("hD0HadronCorrBkg","(1/N_{trig})(dN_{trig}/d#Delta#phi);#Delta #phi;centrality bin;pT (GeV/c); D^{0} p_{T} (GeV/c)",NDim,NBinNumber,XMin,XMax);
+  hD0HadronCorrBkg->Sumw2();
+
+  const int NDimSB = 5;// dPhi, centrality, pT,type
+  const int NBinNumberSB[NDimSB] = {1000,10,100,100,10};
+  const double XMinSB[NDimSB] = {-1.6,0,0,0,0};
+  const double XMaxSB[NDimSB] = {4.8,10,100,10,10};
+  hD0JetCorrSB = new THnSparseD("hD0JetCorrSB","(1/N_{trig})(dN_{trig}/d#Delta#phi);#Delta #phi;centrality bin;pT (GeV/c); D^{0} p_{T} (GeV/c);SB type",NDimSB,NBinNumberSB,XMinSB,XMaxSB);
+  hD0JetCorrSB->Sumw2();
+  hD0HadronCorrSB = new THnSparseD("hD0HadronCorrSB","(1/N_{trig})(dN_{trig}/d#Delta#phi);#Delta #phi;centrality bin;pT (GeV/c); D^{0} p_{T} (GeV/c);SB type",NDimSB,NBinNumberSB,XMinSB,XMaxSB);
+  hD0HadronCorrSB->Sumw2();
+
+  const int NDimD0 = 4;// dPhi, centrality, pT
+  const int NBinNumberD0[NDimD0] = {1000,10,100,5};
+  const double XMinD0[NDimD0] = {-1.6,0,0,0};
+  const double XMaxD0[NDimD0] = {4.8,10,100,5};
+  hD0D0Corr = new THnSparseD("hD0D0CorrCand","(1/N_{trig})(dN_{trig}/d#Delta#phi);#Delta #phi;centrality bin;pT (GeV/c);corIndex",NDimD0,NBinNumberD0,XMinD0,XMaxD0);
+  hD0D0Corr->Sumw2();
+
+  hHadronJetCorr = new THnSparseD("hHadronJetCorr","(1/N_{trig})(dN_{trig}/d#Delta#phi);#Delta #phi;centrality bin;jet pT (GeV/c);hadron pT",NDim,NBinNumber,XMin,XMax);
+  hHadronJetCorr->Sumw2();
+
+
+  jetPtPhi = new TH2F("jetPtPhi","jet-pt-phi;p_{T};#phi",1000,0,100,1000,-1.6,4.8);
+
+  dcaCandJets = new TH3F("dcaCandJets","",10000,0,10,6,0,3.1416,10,0,10);
+  dcaBkgJets = new TH3F("dcaBkgJets","",10000,0,10,6,0,3.1416,10,0,10);
+  invMCandJets = new TH3F("invMCandJets","",1000,0,10,6,0,3.1416,10,0,10);
+  invMBkgJets = new TH3F("invMBkgJets","",1000,0,10,6,0,3.1416,10,0,10);
+  dDaughterTuple = new TNtuple("dDaughterTuple","tuple to store pT of d daughters","dPt:type:kaonPt:pionPt");
+  daughterDup = new TH1D("daughterDup","",10,0,10);
 
   // -------------- USER VARIABLES -------------------------
   mGRefMultCorrUtil = new StRefMultCorr("grefmult");
@@ -174,57 +170,34 @@ StPicoD0AnaMaker::~StPicoD0AnaMaker()
 Int_t StPicoD0AnaMaker::Finish()
 {
   LOG_INFO << " StPicoD0AnaMaker - writing data and closing output file " <<endm;
-  fout.close();
   mOutputFile->cd();
-  // save user variables here
-  //mHadronTuple->Write();
-//  dEtaDHadron->Write();
-//  hEtaD->Write();
-//  hEtaHadron->Write();
- // hPhiHadron->Write();
-//  hPhiD->Write();
-  massPt->Write();
-  massPtLike->Write();
- // checkOld->Write();
-//  checkNew->Write();
-  vtxz->Write();
-  for(int i=0;i!=8;i++)
-  {
-    for(int k=0;k!=3;k++)
-    {
-      for(int j=0;j!=5;j++)
-      {
-        profV2[i][j][k]->Write();
-      }
-      v2Weight[i][k]->Write();
-    }
-  }
-  for(int i=0;i<6;i++)
-  {
-    for(int j=0;j<5;j++)
-    {
-      likeV2Mass1[i][j]->Write();
-      likeV2Mass2[i][j]->Write();
-      unlikeV2Mass[i][j]->Write();
-    }
-  }
-    massLike1->Write();
-    massLike2->Write();
-    massUnlike->Write();
-  for(int i=0;i<5;i++)
-  {
-    hadronV2[i]->Write();
-    hadronV2_sum[i]->Write();
-    for(int j=0;j<9;j++)
-    {
-    //hadronV2_excl[i][j]->Write();
-    //hadronV2_excl_sum[i][j]->Write();
-    }
-  }
-    
-  checkPeak->Write();
-      
 
+  vtxz->Write();
+  dCount->Write();
+  hJetPt->Write();
+  hHadronPt->Write();
+  jetPtPhi->Write();
+
+  massPt->Write();
+
+  candCount->Write();
+  bkgCount->Write();
+  hadronCount->Write();
+
+  hD0JetCorrCand->Write();
+  hD0JetCorrBkg->Write();
+  hD0JetCorrSB->Write();
+  hD0HadronCorrCand->Write();
+  hD0HadronCorrBkg->Write();
+  hD0HadronCorrSB->Write();
+  hD0D0Corr->Write();
+  hHadronJetCorr->Write();
+
+  invMCandJets->Write();
+  invMBkgJets->Write();
+
+  // dDaughterTuple->Write();
+  daughterDup->Write();
   mOutputFile->Close();
   delete mPrescales;
 
@@ -261,11 +234,11 @@ Int_t StPicoD0AnaMaker::Make()
 
 
   StThreeVectorF pVtx(-999.,-999.,-999.);
-  //StThreeVectorF Vertex(-999.,-999.,-999.);
   StPicoEvent *event = (StPicoEvent *)picoDst->event();
-  if(!(isGoodEvent()))
+  float field = event->bField();
+  if(!(isGoodEvent()) )//minBias trigger requires
   {
-    //     LOG_WARN << " Not Good Event! Skip! " << endm;
+    LOG_WARN << " Not Good Event! Skip! " << endm;
     return kStWarn;
   }
   if(event) {
@@ -278,22 +251,30 @@ Int_t StPicoD0AnaMaker::Make()
   }
   mGRefMultCorrUtil->init(picoDst->event()->runId());
   mGRefMultCorrUtil->initEvent(picoDst->event()->grefMult(),pVtx.z(),picoDst->event()->ZDCx()) ;
-
-  getHadronCorV2();
   int centrality  = mGRefMultCorrUtil->getCentralityBin9();
-  //if(centrality>1)
-   // return kStWarn;
-    
-  const double reweight = mGRefMultCorrUtil->getWeight();
-  //const double refmultCor = mGRefMultCorrUtil->getRefMultCorr();
+  int centBin = 0;
+  // int runBin = phiWeight2D->GetXaxis()->FindBin(event->runId());
+  // phiWeight = (TH1D *)phiWeight2D->ProjectionY("phiWeight",runBin,runBin);
+  // cout<<"runid = "<<event->runId()<<"\t run bin = "<<runBin<<endl;
+  if(centrality>=7) centBin=1;
+  else if(centrality>=4)  centBin=2;
+  else centBin=3;
+  // fillHadronJetCorr();
 
-  vector<const StKaonPion *> signal;
-  vector<const StKaonPion *> bkg;
-  signal.clear();
-  bkg.clear();
-      
-  vector<unsigned int> d0Daughter_l;
-  vector<unsigned int> d0Daughter_u;
+  //Jet definition
+  double jet_R = 0.2;
+  fastjet::JetDefinition jetDefinition(fastjet::antikt_algorithm,jet_R);
+  //Area defintion
+  // double ghost_maxrap = 1.0;// fiducial cut for background estimation
+  // fastjet::AreaDefinition areaDefinition(fastjet::active_area_explicit_ghosts,fastjet::GhostedAreaSpec(ghost_maxrap,1,0.01));
+  // container for selected tracks
+
+  double reweight = mGRefMultCorrUtil->getWeight();
+  double pi = TMath::Pi();
+  double fitmean[6] = {1.85921,1.8633,1.86403,1.86475,1.86252,1.86534};
+  double fitsigma[6] = {0.018139,0.0139476,0.0158346,0.0169282,0.0199567,0.0189131};
+  double d_counting = 0;
+  vector<int> bkgKaon,bkgPion,candKaon,candPion;
   for (int idx = 0; idx < aKaonPion->GetEntries(); ++idx)
   {
     StKaonPion const* kp = (StKaonPion*)aKaonPion->At(idx);
@@ -302,238 +283,251 @@ Int_t StPicoD0AnaMaker::Make()
 
     if (!isGoodTrack(kaon) || !isGoodTrack(pion)) continue;
     if (!isTpcPion(pion)) continue;
-    //if(!isTpcKaon(kaon,&pVtx)) continue;  
     bool tpcKaon = isTpcKaon(kaon,&pVtx);
     float kBeta = getTofBeta(kaon,&pVtx);
     bool tofAvailable = kBeta>0;
     bool tofKaon = tofAvailable && isTofKaon(kaon,kBeta);
     bool goodKaon = (tofAvailable && tofKaon) || (!tofAvailable && tpcKaon);
     if(!goodKaon) continue;
-    int charge=0;
-    if((charge=isD0Pair(kp))!=0 )
+    int charge=isD0Pair(kp);
+    if(-2==charge) continue;
+    if(charge!=0)  d_counting++;
+    // dcaD0Daughters->Fill(kp->pionDca(),pion->gPt());
+    // dcaD0Daughters->Fill(kp->kaonDca(),kaon->gPt());
+    set<unsigned int> dDaughters;
+    dDaughters.insert(kp->kaonIdx());
+    dDaughters.insert(kp->pionIdx());
+    std::vector<fastjet::PseudoJet> selectedTracks;
+    // std::vector<fastjet::PseudoJet,int> trackAdd;
+    cout<<"number of tracks = "<<picoDst->numberOfTracks()<<endl;
+    int hCount[10] = {0};
+    for(unsigned int i=0;i<picoDst->numberOfTracks();++i)
     {
-      unsigned int index1 = kp->kaonIdx();
-      unsigned int index2 = kp->pionIdx();
-      if(charge==-1)
+      StPicoTrack const* mTrack = picoDst->track(i);
+      if(!mTrack) continue;
+      if(mTrack->nHitsFit()<20) continue;
+      if(1.0*mTrack->nHitsFit()/mTrack->nHitsMax()<0.52) continue;
+      // if(mTrack->pMom().perp()<0.2) continue;
+      if(mTrack->gPt()<0.2) continue;
+      double trackDca = getDca(mTrack);
+      if(trackDca>3)  continue;
+      if(dDaughters.find(i) != dDaughters.end())  continue;
+      double trackPx = mTrack->gMom(pVtx,field).x();   
+      double trackPy = mTrack->gMom(pVtx,field).y();   
+      double trackPz = mTrack->gMom(pVtx,field).z();   
+      // double trackPx = mTrack->pMom().x();   
+      // double trackPy = mTrack->pMom().y();   
+      // double trackPz = mTrack->pMom().z();   
+      double trackM = 0.13957;
+      if(isTpcKaon(mTrack,&pVtx))
+        trackM = 0.493667;
+
+      double trackE = sqrt( trackPx*trackPx + trackPy*trackPy + trackPz*trackPz + trackM);
+      fastjet::PseudoJet pseudoJet(trackPx,trackPy,trackPz,trackE);
+      selectedTracks.push_back(pseudoJet);
+      // trackAdd[pseudoJet] = i;
+      // std::pair<fastjet::PseudoJet,int> pairT(pseudoJet,i);
+      // trackAdd.push_back(pairT);
+    }
+    fastjet::ClusterSequence cs(selectedTracks,jetDefinition);
+    // double ptmin = 0.2;
+    std::vector<fastjet::PseudoJet> mInclusiveJets;
+    mInclusiveJets = cs.inclusive_jets();
+
+    // for(unsigned int i=0;i<mInclusiveJets.size();i++)
+    // {
+    //   double jetPhi = mInclusiveJets[i].phi();
+    //   if(jetPhi>pi)  jetPhi = 2.*pi-jetPhi;
+    //   jetPtPhi->Fill(mInclusiveJets[i].pt(),jetPhi);
+    // }
+
+
+    float d0Pt = kp->pt();
+    double d0Mass = kp->m();
+    if(d0Pt>10) continue;
+    if(d0Pt<1)  continue;
+    int fitindex = 5;
+    if(d0Pt<5)
+      fitindex = static_cast<int>(d0Pt);
+    int ptIdx = 5;
+    if(kp->pt()<5)
+      ptIdx = static_cast<int>(kp->pt());
+    double mean = fitmean[ptIdx];
+    double sigma = fitsigma[ptIdx];
+
+    double reweight_eff = (efficiency[0][fitindex]/efficiency[centBin][fitindex]);
+    reweight*=reweight_eff;
+    if(charge!=0)
+      massPt->Fill(kp->m(),d0Pt,centrality,reweight);
+    bool isCand = d0Mass>mean-3*sigma && d0Mass<mean+3*sigma && charge!=0;
+    bool isBkg = (d0Mass>mean-9*sigma && d0Mass<mean-4*sigma) ||
+      (d0Mass<mean+9*sigma && d0Mass>mean+4*sigma) ||
+      (d0Mass>mean-3*sigma && d0Mass<mean+3*sigma && charge==0);
+    int sbType = -1;
+    if(d0Mass>mean-3*sigma && d0Mass<mean+3*sigma && charge==0)  sbType = 1;
+    if(d0Mass>mean-9*sigma && d0Mass<mean-4*sigma && charge==0)  sbType = 2;
+    if(d0Mass>mean-9*sigma && d0Mass<mean-4*sigma && charge!=0)  sbType = 3;
+    if(d0Mass<mean+9*sigma && d0Mass>mean+4*sigma && charge==0)  sbType = 4;
+    if(d0Mass<mean+9*sigma && d0Mass>mean+4*sigma && charge!=0)  sbType = 5;
+    int pairType = 0;
+    if(isCand)
+    {
+      candCount->Fill(d0Pt,centrality);
+      pairType = 1;
+      if(d0Pt>3)
       {
-        d0Daughter_u.push_back(index1);
-        d0Daughter_u.push_back(index2);
-      }
-      if(charge>0)
-      {
-        d0Daughter_l.push_back(index1);
-        d0Daughter_l.push_back(index2);
+        candPion.push_back(kp->pionIdx());
+        candKaon.push_back(kp->kaonIdx());
       }
     }
-  }
-  
-  for (int idx = 0; idx < aKaonPion->GetEntries(); ++idx)
-  {
-    StKaonPion const* kp = (StKaonPion*)aKaonPion->At(idx);
-    StPicoTrack const* kaon = picoDst->track(kp->kaonIdx());
-    StPicoTrack const* pion = picoDst->track(kp->pionIdx());
-
-    if (!isGoodTrack(kaon) || !isGoodTrack(pion)) continue;
-    if (!isTpcPion(pion)) continue;
-    //if(!isTpcKaon(kaon,&pVtx)) continue;  
-    bool tpcKaon = isTpcKaon(kaon,&pVtx);
-    float kBeta = getTofBeta(kaon,&pVtx);
-    bool tofAvailable = kBeta>0;
-    bool tofKaon = tofAvailable && isTofKaon(kaon,kBeta);
-    bool goodKaon = (tofAvailable && tofKaon) || (!tofAvailable && tpcKaon);
-    if(!goodKaon) continue;
-    int charge=0;
-    if(kp->pt()>10) continue;
-    int fitindex = 5;
-    if(kp->pt()<5)
-      fitindex = static_cast<int>(kp->pt());
-    double mean = fitmean[fitindex];
-    double sigma = fitsigma[fitindex];
-
-
-    if((charge=isD0Pair(kp))!=0 )
+    if(isBkg)
     {
-      float d0Fill[20] = {0}; 
-      float d0Phi = kp->phi();
-      float d0Eta = kp->eta();//hadron->pMom().pseudoRapidity();
-      d0Fill[0] = d0Phi; 
-      bool fillSB[8];
-      double dMass = kp->m();
-      double etacut[3] = {0,0.5,0.75};
-      vector<float> hadronPhi[3];
-      vector<float>::iterator it;
-      for(int eta_i=0;eta_i<3;eta_i++)
+      bkgCount->Fill(d0Pt,centrality);
+      pairType = 2;
+      if(d0Pt>3)
       {
-        if(charge<0)
-          getCorHadron(d0Eta,hadronPhi[eta_i],d0Daughter_u,d0Phi,etacut[eta_i]);
-        else 
-          getCorHadron(d0Eta,hadronPhi[eta_i],d0Daughter_l,d0Phi,etacut[eta_i]);
+        bkgPion.push_back(kp->pionIdx());
+        bkgKaon.push_back(kp->kaonIdx());
       }
-      if(charge==-1)
-        massPt->Fill(dMass,kp->pt(),reweight);
-      if(charge>0)
-        massPtLike->Fill(dMass,kp->pt(),reweight);
-      fillSB[0] =  (charge>0)&& (dMass>(mean-1*sigma)) &&  (dMass<(mean+1*sigma));
-      fillSB[1] =  (charge>0)&& (dMass>(mean-3*sigma)) &&  (dMass<(mean+3*sigma));
-      fillSB[2] =  (charge>0) && (((dMass>(mean+4*sigma)) &&  (dMass<(mean+9*sigma))) ||((dMass>(mean-9*sigma)) &&  (dMass<(mean-4*sigma))));
-      fillSB[4] = (charge==-1)&& (dMass>(mean-sigma)) &&  (dMass<(mean+sigma));
-      fillSB[5] = (charge==-1)&& (dMass>(mean-3*sigma)) &&  (dMass<(mean+3*sigma));
-      fillSB[6] = (charge==-1)&& (((dMass>(mean+4*sigma)) &&  (dMass<(mean+9*sigma))) ||((dMass>(mean-9*sigma)) &&  (dMass<(mean-4*sigma))));
-      fillSB[3] = fillSB[1] || fillSB[2];
-      fillSB[7] = fillSB[1] || fillSB[2] || fillSB[6];
+    }
+    float daughterFill[] = {d0Pt,(float)pairType,kaon->gPt(),pion->gPt()};
+    dDaughterTuple->Fill(daughterFill); 
 
-      if(charge==1 )
+    cout<<"is tracks = "<<hCount[0]<<endl;
+    cout<<"pass # hits = "<<hCount[1]<<endl;
+    cout<<"pass # prob = "<<hCount[2]<<endl;
+    cout<<"pass pT = "<<hCount[3]<<endl;
+    cout<<"pass DCA = "<<hCount[4]<<endl;
+
+    dCount->Fill(d_counting);
+///// Loop to do D0-hadron correlation
+    double hadronPtCut = 1.;
+    double jetPtCut = 3.;
+    for(unsigned int i=0;i<picoDst->numberOfTracks();++i)
+    {
+      StPicoTrack const* mTrack = picoDst->track(i);
+      if(!mTrack) continue;
+      if(mTrack->nHitsFit()<20) continue;
+      if(1.0*mTrack->nHitsFit()/mTrack->nHitsMax()<0.52) continue;
+      double trackPt = mTrack->gPt();
+      double hadron_phi = mTrack->gMom(pVtx,field).phi();
+      // double hadron_phi = mTrack->pMom().phi();
+      // double trackPt = mTrack->pMom().perp();
+      if(trackPt<hadronPtCut) continue;
+      double trackDca = getDca(mTrack);
+      if(trackDca>3)  continue;
+      hHadronPt->Fill(trackPt);
+      if(dDaughters.find(i) != dDaughters.end())  continue;
+
+      double deltaPhi = (hadron_phi-kp->phi());
+      if(deltaPhi<-0.5*pi)  deltaPhi += 2*pi;
+      if(deltaPhi>1.5*pi)  deltaPhi -= 2*pi;
+      double hadronFill[] = {deltaPhi,(double)centrality,trackPt,d0Pt};
+      double hadronFillSB[] = {deltaPhi,(double)centrality,trackPt,d0Pt,(double)sbType};
+      if(isCand)
+        hD0HadronCorrCand->Fill(hadronFill,reweight);
+      if(isBkg)
       {
-        likeV2Mass1[fitindex][1]->Fill(kp->m(),cos(2*d0Phi));
-        likeV2Mass1[fitindex][2]->Fill(kp->m(),sin(2*d0Phi));
-        massLike1->Fill(kp->m(),kp->pt(),reweight);
+        hD0HadronCorrBkg->Fill(hadronFill,reweight);
+        hD0HadronCorrSB->Fill(hadronFillSB,reweight);
       }
-      if(charge==2 )
+    }
+//////////////////////////////////////
+///// Loop to do D0-jetcorrelation
+//
+    for(unsigned int i=0;i<mInclusiveJets.size();i++)
+    {
+      if(mInclusiveJets[i].pt()<jetPtCut)  continue;
+      double deltaPhi = (mInclusiveJets[i].phi()-kp->phi());
+      if(deltaPhi<-0.5*pi)  deltaPhi += 2*pi;
+      if(deltaPhi>1.5*pi)  deltaPhi -= 2*pi;
+      double jetFill[] = {deltaPhi,(double)centrality,mInclusiveJets[i].pt(),d0Pt};
+      double jetFillSB[] = {deltaPhi,(double)centrality,mInclusiveJets[i].pt(),d0Pt,(double)sbType};
+      if(isCand)
+        hD0JetCorrCand->Fill(jetFill,reweight);
+      if(isBkg)
       {
-        likeV2Mass2[fitindex][1]->Fill(kp->m(),cos(2*d0Phi));
-        likeV2Mass2[fitindex][2]->Fill(kp->m(),sin(2*d0Phi));
-        massLike2->Fill(kp->m(),kp->pt(),reweight);
+        hD0JetCorrBkg->Fill(jetFill,reweight);
+        hD0JetCorrSB->Fill(jetFillSB,reweight);
       }
-      if(charge==-1)
+      std::vector<fastjet::PseudoJet> constituents = mInclusiveJets[i].constituents();
+      for(unsigned int iC=0;iC<constituents.size();iC++)
       {
-        unlikeV2Mass[fitindex][1]->Fill(kp->m(),cos(2*d0Phi));
-        unlikeV2Mass[fitindex][2]->Fill(kp->m(),sin(2*d0Phi));
+         for(unsigned int jC = iC;jC<constituents.size();jC++)
+         {
+           fastjet::PseudoJet cPair = constituents[iC]+constituents[jC];
+           if(isCand)
+             invMCandJets->Fill(cPair.m(),deltaPhi,centrality,reweight);
+           if(isBkg)
+             invMBkgJets->Fill(cPair.m(),deltaPhi,centrality,reweight);
+         }
       }
-      //getCorHadron(d0Eta,hadronPhi[0],index1,index2,d0Phi,0);
-      for(it=hadronPhi[0].begin(); it!=hadronPhi[0].end(); it++)
-      {
-        double mHadronPhi = *it;
-        double deltaPhi = 2*(d0Phi - mHadronPhi);
-        double cos2Phi = cos(deltaPhi); 
-        if(kp->pt()>5) continue;
+    }
+///// Loop to do D0-jet correlation
+//////////////////////////////////////
+///// Loop to do D0-D0 correlation
+    for (int jdx = idx; jdx < aKaonPion->GetEntries(); ++jdx)
+    {
+      StKaonPion const* kp_acc = (StKaonPion*)aKaonPion->At(jdx);
+      StPicoTrack const* kaon_acc = picoDst->track(kp_acc->kaonIdx());
+      StPicoTrack const* pion_acc = picoDst->track(kp_acc->pionIdx());
 
-        if(charge==1 )
-        {
-          likeV2Mass1[fitindex][0]->Fill(kp->m(),cos2Phi,reweight);
-          likeV2Mass1[fitindex][3]->Fill(kp->m(),cos(2*mHadronPhi));
-          likeV2Mass1[fitindex][4]->Fill(kp->m(),sin(2*mHadronPhi));
-      
-          if(fitindex==4) 
-            checkPeak->Fill(kp->m(),cos2Phi,reweight);
-        }
-        if(charge==2 )
-        {
-          likeV2Mass2[fitindex][0]->Fill(kp->m(),cos2Phi,reweight);
-          likeV2Mass2[fitindex][3]->Fill(kp->m(),cos(2*mHadronPhi));
-          likeV2Mass2[fitindex][4]->Fill(kp->m(),sin(2*mHadronPhi));
-        }
-        if(charge==-1)
-        {
-          unlikeV2Mass[fitindex][0]->Fill(kp->m(),cos2Phi,reweight);
-          unlikeV2Mass[fitindex][3]->Fill(kp->m(),cos(2*mHadronPhi));
-          unlikeV2Mass[fitindex][4]->Fill(kp->m(),sin(2*mHadronPhi));
-        }
-        if(kp->pt()>4 && kp->pt()<5)
-        {
-          float checkFill[4] = {(float)deltaPhi,kp->m(),kp->pt(),(float)charge};
-          checkNew->Fill(checkFill);
-        }
-      
-      }
+      if (!isGoodTrack(kaon_acc) || !isGoodTrack(pion_acc)) continue;
+      if (!isTpcPion(pion_acc)) continue;
+      bool tpcKaon_acc = isTpcKaon(kaon_acc,&pVtx);
+      float kBeta_acc = getTofBeta(kaon_acc,&pVtx);
+      bool tofAvailable_acc = kBeta_acc>0;
+      bool tofKaon_acc = tofAvailable_acc && isTofKaon(kaon_acc,kBeta_acc);
+      bool goodKaon_acc = (tofAvailable_acc && tofKaon_acc) || (!tofAvailable_acc && tpcKaon_acc);
+      if(!goodKaon_acc) continue;
+      int charge_acc=isD0Pair150(kp_acc);
+      if(charge_acc==-2) continue;
+      if(charge_acc*charge>=0) continue;
 
-      for(int i=0;i<3;i++)//different eta gap
-      {
-        for(int j=0;j<8;j++)
-        {
-          if(fillSB[j])
-          {
-            profV2[j][1][i]->Fill(kp->pt(),cos(2*d0Phi));
-            profV2[j][2][i]->Fill(kp->pt(),sin(2*d0Phi));
-          }
-        }
-        for(it=hadronPhi[i].begin(); it!=hadronPhi[i].end(); it++)
-        {
-          double mHadronPhi = *it;
-          double deltaPhi = d0Phi - mHadronPhi;
-          double cos2Phi = cos(2*deltaPhi); 
-          for(int j=0;j<8;j++)
-          {
-            if(fillSB[j])
-            {
-              profV2[j][0][i]->Fill(kp->pt(),cos2Phi,reweight);
-              v2Weight[j][i]->Fill(centrality,kp->pt(),reweight);
-              profV2[j][3][i]->Fill(kp->pt(),cos(2*mHadronPhi));
-              profV2[j][4][i]->Fill(kp->pt(),sin(2*mHadronPhi));
-            }
-          }
-        }//Hadron loop
-      }//different eta gap 
-/*
-      int index1 = kp->kaonIdx();
-      int index2 = kp->pionIdx();
-      vector<unsigned int>::iterator it1;
-      vector<unsigned int>::iterator it2;
-      it1 = find(d0Daughter_u.begin(),d0Daughter_u.end(),index1);
-      it2 = find(d0Daughter_u.begin(),d0Daughter_u.end(),index2);
-      bool testLikesign = (it1==d0Daughter_u.end() && it2==d0Daughter_u.end());
-      if(!testLikesign && charge>0) continue;
-      for(it=hadronPhi[0].begin(); it!=hadronPhi[0].end(); it++)
-      {
-        double mHadronPhi = *it;
-        double deltaPhi = 2*(d0Phi - mHadronPhi);
-        double cos2Phi = cos(deltaPhi); 
-        if(kp->pt()>5 ||kp->pt()<4) continue;
+      float d0PtAcc = kp_acc->pt();
+      double d0MassAcc = kp_acc->m();
+      int ptIdxAcc = 5;
+      if(kp_acc->pt()<5)
+        ptIdxAcc = static_cast<int>(kp_acc->pt());
+      double meanAcc = fitmean[ptIdxAcc];
+      double sigmaAcc = fitsigma[ptIdxAcc];
 
-        if(charge==1 )
-        {
-          likeV2Mass1[5][0]->Fill(kp->m(),cos2Phi,reweight);
-          likeV2Mass1[5][3]->Fill(kp->m(),cos(mHadronPhi));
-          likeV2Mass1[5][4]->Fill(kp->m(),sin(mHadronPhi));
-          if(5==4) 
-            checkPeak->Fill(kp->m(),cos2Phi,reweight);
-        }
-        if(charge==2 )
-        {
-          likeV2Mass2[5][0]->Fill(kp->m(),cos2Phi,reweight);
-          likeV2Mass2[5][3]->Fill(kp->m(),cos(mHadronPhi));
-          likeV2Mass2[5][4]->Fill(kp->m(),sin(mHadronPhi));
-        }
-        if(charge==-1)
-        {
-          unlikeV2Mass[5][0]->Fill(kp->m(),cos2Phi,reweight);
-          unlikeV2Mass[5][3]->Fill(kp->m(),cos(mHadronPhi));
-          unlikeV2Mass[5][4]->Fill(kp->m(),sin(mHadronPhi));
-        }
-      }
-
-      for(int i=1;i<2;i++)//different eta gap
-      {
-        for(int j=0;j<8;j++)
-        {
-          if(fillSB[j])
-          {
-            profV2[j][1][i]->Fill(kp->pt(),cos(d0Phi));
-            profV2[j][2][i]->Fill(kp->pt(),sin(d0Phi));
-          }
-        }
-        for(it=hadronPhi[i].begin(); it!=hadronPhi[i].end(); it++)
-        {
-          double mHadronPhi = *it;
-          double deltaPhi = d0Phi - mHadronPhi;
-          double cos2Phi = cos(2*deltaPhi); 
-          for(int j=0;j<8;j++)
-          {
-            if(fillSB[j])
-            {
-              profV2[j][0][i]->Fill(kp->pt(),cos2Phi,reweight);
-              v2Weight[j][i]->Fill(centrality,kp->pt(),reweight);
-              profV2[j][3][i]->Fill(kp->pt(),cos(mHadronPhi));
-              profV2[j][4][i]->Fill(kp->pt(),sin(mHadronPhi));
-            }
-          }
-        }//Hadron loop
-      }//different eta gap 
-*/
-
-
-    }//D loop
-
+      bool isCandAcc = d0MassAcc>meanAcc-3*sigmaAcc && d0MassAcc<meanAcc+3*sigmaAcc && charge!=0;
+      bool isBkgAcc = (d0MassAcc>meanAcc-9*sigmaAcc && d0MassAcc<meanAcc-4*sigmaAcc) ||
+        (d0MassAcc<meanAcc+9*sigmaAcc && d0MassAcc>meanAcc+4*sigmaAcc) ||
+        (d0MassAcc>meanAcc-3*sigmaAcc && d0MassAcc<meanAcc+3*sigmaAcc && charge==0);
+      int indexCor = 0;
+      if(isCand && isCandAcc)  indexCor = 1;
+      if(isCand && isBkgAcc)  indexCor = 2;
+      if(isBkg && isCandAcc)  indexCor = 3;
+      if(isBkg && isBkgAcc)  indexCor = 4;
+      double deltaPhi = kp->phi()-kp_acc->phi();
+      if(fabs(deltaPhi-0.)<0.000001)  continue;
+      if(deltaPhi<-0.5*pi)  deltaPhi += 2*pi;
+      if(deltaPhi>1.5*pi)  deltaPhi -= 2*pi;
+      double d0Fill[] = {deltaPhi,(double)centrality,d0PtAcc,(double)indexCor};
+      hD0D0Corr->Fill(d0Fill,reweight);
+    }
   }
+  for(int i=0;i<bkgKaon.size();i++)
+  {
+    daughterDup->Fill(1);
+    for(int j=0;j<candKaon.size();j++)
+      if(bkgKaon[i]==candKaon[j])
+        daughterDup->Fill(5);
+  }
+  for(int i=0;i<bkgPion.size();i++)
+  {
+    daughterDup->Fill(2);
+    for(int j=0;j<candPion.size();j++)
+      if(bkgPion[i]==candPion[j])
+        daughterDup->Fill(6);
+  }
+  for(int i=0;i<candKaon.size();i++)
+    daughterDup->Fill(3);
+  for(int i=0;i<candPion.size();i++)
+    daughterDup->Fill(4);
+  
   return kStOK;
 }
 //-----------------------------------------------------------------------------
@@ -557,14 +551,11 @@ bool StPicoD0AnaMaker::isGoodPair(StKaonPion const* const kp) const
 }
 
 
-int StPicoD0AnaMaker::isD0Pair(StKaonPion const* const kp) const
+int StPicoD0AnaMaker::isD0Pair(StKaonPion const* const kp) const // return -1:unlike sign; 1:like-sign 
 {
 
   StPicoTrack const* kaon = picoDst->track(kp->kaonIdx());
   StPicoTrack const* pion = picoDst->track(kp->pionIdx());
-  //  bool pairCuts =  cos(kp->pointingAngle()) > mycuts::cosTheta &&
-  //          kp->pionDca() > mycuts::pDca && kp->kaonDca() > mycuts::kDca &&
-  //          kp->dcaDaughters() < mycuts::dcaDaughters;  
   bool pairCuts = false;
   if(kp->pt()<1)
   {
@@ -597,77 +588,75 @@ int StPicoD0AnaMaker::isD0Pair(StKaonPion const* const kp) const
       kp->dcaDaughters() < 0.0060 && kp->decayLength()>0.0259;  
   }
 
-  int charge = kaon->charge() * pion->charge();
-  if(charge>0)
-    charge = kaon->charge()>0 ? 1:2;
-
-
+  int charge = (kaon->charge() * pion->charge()>0)?0:kaon->charge();
   if(pairCuts)
     return charge;
   else
-    return 0;
+    return -2;
 }
 /*
 */
 
-int StPicoD0AnaMaker::isD0PairOld(StKaonPion const* const kp) const
+int StPicoD0AnaMaker::isD0Pair150(StKaonPion const* const kp) const
 {
 
   StPicoTrack const* kaon = picoDst->track(kp->kaonIdx());
   StPicoTrack const* pion = picoDst->track(kp->pionIdx());
-//  bool pairCuts =  cos(kp->pointingAngle()) > mycuts::cosTheta &&
-//          kp->pionDca() > mycuts::pDca && kp->kaonDca() > mycuts::kDca &&
-//          kp->dcaDaughters() < mycuts::dcaDaughters;  
   bool pairCuts = false;
   if(kp->pt()<1)
   {
-    pairCuts =  sin(kp->pointingAngle())*kp->decayLength() < 0.0062 &&
-      kp->pionDca() > 0.0109 && kp->kaonDca() > 0.0123 &&
-      kp->dcaDaughters() < 0.0082 && kp->decayLength()>0.0149;  
+    pairCuts =  sin(kp->pointingAngle())*kp->decayLength() < 0.0072 &&
+      kp->pionDca() > 0.0092 && kp->kaonDca() > 0.0105 &&
+      kp->dcaDaughters() < 0.0077 && kp->decayLength()>0.0110;  
   }
   else if(kp->pt()<2)
   {
-    pairCuts =  sin(kp->pointingAngle())*kp->decayLength() < 0.0047 &&
-      kp->pionDca() > 0.0108 && kp->kaonDca() > 0.0097 &&
-      kp->dcaDaughters() < 0.0070 && kp->decayLength()>0.0205;  
+    pairCuts =  sin(kp->pointingAngle())*kp->decayLength() < 0.0053 &&
+      kp->pionDca() > 0.0078 && kp->kaonDca() > 0.0068 &&
+      kp->dcaDaughters() < 0.0078 && kp->decayLength()>0.0168;  
   }
   else if(kp->pt()<3)
   {
-    pairCuts =  sin(kp->pointingAngle())*kp->decayLength() < 0.0040 &&
-      kp->pionDca() > 0.0100 && kp->kaonDca() > 0.0091 &&
-      kp->dcaDaughters() < 0.0056 && kp->decayLength()>0.0216;  
+    pairCuts =  sin(kp->pointingAngle())*kp->decayLength() < 0.0047 &&
+      kp->pionDca() > 0.0086 && kp->kaonDca() > 0.0080 &&
+      kp->dcaDaughters() < 0.0074 && kp->decayLength()>0.0187;  
   }
   else if(kp->pt()<5)
   {
-    pairCuts =  sin(kp->pointingAngle())*kp->decayLength() < 0.0041 &&
-      kp->pionDca() > 0.0074 && kp->kaonDca() > 0.0075 &&
-      kp->dcaDaughters() < 0.0065 && kp->decayLength()>0.0233;  
+    pairCuts =  sin(kp->pointingAngle())*kp->decayLength() < 0.0042 &&
+      kp->pionDca() > 0.0065 && kp->kaonDca() > 0.0066 &&
+      kp->dcaDaughters() < 0.0068 && kp->decayLength()>0.0199;  
   }
   else 
   {
-    pairCuts =  sin(kp->pointingAngle())*kp->decayLength() < 0.0042 &&
-      kp->pionDca() > 0.067 && kp->kaonDca() > 0.0053 &&
-      kp->dcaDaughters() < 0.0065 && kp->decayLength()>0.0282;  
+    pairCuts =  sin(kp->pointingAngle())*kp->decayLength() < 0.0062 &&
+      kp->pionDca() > 0.0047 && kp->kaonDca() > 0.0041 &&
+      kp->dcaDaughters() < 0.0066 && kp->decayLength()>0.0180;  
   }
 
-  int charge = kaon->charge() * pion->charge();
-    
-
+  int charge = (kaon->charge() * pion->charge()>0)?0:kaon->charge();
   if(pairCuts)
     return charge;
   else
-    return 0;
+    return -2;
 }
-
-
 
 bool StPicoD0AnaMaker::isGoodEvent()
 {
   StPicoEvent *event = (StPicoEvent *)picoDst->event();
-  return (event->triggerWord() & mycuts::triggerWord) &&
+  return (isMBTrigger()) &&
     fabs(event->primaryVertex().z()) < mycuts::vz &&
     fabs(event->primaryVertex().z() - event->vzVpd()) < mycuts::vzVpdVz;
   //  return event->triggerWord() & mycuts::triggerWord;
+}
+bool StPicoD0AnaMaker::isMBTrigger()
+{
+  StPicoEvent *event = (StPicoEvent *)picoDst->event();
+  return (event->isTrigger(450050) ||
+      event->isTrigger(450060)||
+      event->isTrigger(450005)||
+      event->isTrigger(450015)||
+      event->isTrigger(450025));
 }
 //-----------------------------------------------------------------------------
 bool StPicoD0AnaMaker::isGoodTrack(StPicoTrack const * const trk) const
@@ -677,11 +666,6 @@ bool StPicoD0AnaMaker::isGoodTrack(StPicoTrack const * const trk) const
   // The new StPicoTrack which is used in official production has a method to check this
   return trk->gPt() > mycuts::minPt && trk->nHitsFit() >= mycuts::nHitsFit && trk->isHFTTrack();
   //return  trk->nHitsFit() >= mycuts::nHitsFit;
-}
-//-----------------------------------------------------------------------------
-bool StPicoD0AnaMaker::isGoodHadron(StPicoTrack const * const trk) const
-{
-  return trk->pMom().perp() > mycuts::hadronPtMin &&trk->pMom().perp() < mycuts::hadronPtMax && trk->nHitsFit() >= mycuts::nHitsFit &&fabs(trk->pMom().pseudoRapidity())<1.&&fabs(trk->nSigmaElectron())>3 && (1.0*trk->nHitsFit()/trk->nHitsMax())>0.52;
 }
 //-----------------------------------------------------------------------------
 bool StPicoD0AnaMaker::isTpcPion(StPicoTrack const * const trk) const
@@ -736,173 +720,89 @@ bool StPicoD0AnaMaker::isTofKaon(StPicoTrack const * const trk, float beta) cons
     float beta_k = ptot/sqrt(ptot*ptot+M_KAON_PLUS*M_KAON_PLUS);
     tofKaon = fabs(1/beta - 1/beta_k) < mycuts::kTofBetaDiff ? true : false;
   }
-
   return tofKaon;
 }
-
-
-bool StPicoD0AnaMaker::getCorHadron(float eta,vector<float> &hadronsPhi, vector<unsigned int> index1, float phi, float etaCut) 
+//-----------------------------------------------------------------------------
+bool StPicoD0AnaMaker::isGoodHadron(StPicoTrack const * const trk) const
 {
-  for(unsigned int i=0;i<picoDst->numberOfTracks();++i)
-  {
-    StPicoTrack const* hadron = picoDst->track(i);
-    if(!hadron)  continue; 
-    if(hadron->pMom().perp()<0.2) continue;
-    etaPhi_Hadron_all->Fill(hadron->pMom().phi(),hadron->pMom().pseudoRapidity());
-    vector<unsigned int>::iterator it_index;
-    it_index = find(index1.begin(),index1.end(),i);
-    if(it_index!=index1.end())  continue;
-    if(!isGoodHadron(hadron)) continue;
-    float dEta = fabs(hadron->pMom().pseudoRapidity() - eta);
-    float dPhi = (hadron->pMom().phi() - phi);
-    if(etaCut<0.001)
-    {
-      dEtaDHadron->Fill(dEta);
-      hEtaD->Fill(eta);
-      hPhiD->Fill(phi);
-      hEtaHadron->Fill(hadron->pMom().pseudoRapidity());
-      hPhiHadron->Fill(hadron->pMom().phi());
-    }
-    //if(dPhi>3.1416) dPhi = 2*3.1416-dPhi;
-    if(dEta< etaCut|| dEta > mycuts::corDetaMax)  continue;
-    etaPhi->Fill(dPhi,dEta);
-    etaPhi_Hadron->Fill(hadron->pMom().phi(),hadron->pMom().pseudoRapidity());
-    hadronsPhi.push_back(hadron->pMom().phi());
-  }
-  //  fixPhi(hadronsPhi);
-  return true;
-
+  return trk->nHitsFit() >= mycuts::nHitsFit &&fabs(trk->pMom().pseudoRapidity())<1. && (1.0*trk->nHitsFit()/trk->nHitsMax())>0.52;
+}
+bool StPicoD0AnaMaker::isGoodGlobalHadron(StPicoTrack const * const trk) const
+{
+  StPicoEvent *event = (StPicoEvent *)picoDst->event();
+  float field = event->bField();
+  StThreeVectorF pVtx(-999.,-999.,-999.);
+  pVtx = event->primaryVertex();
+  return trk->nHitsFit() >= mycuts::nHitsFit &&fabs(trk->gMom(pVtx,field).pseudoRapidity())<1. && (1.0*trk->nHitsFit()/trk->nHitsMax())>0.52;
+}
+double StPicoD0AnaMaker::getDca(StPicoTrack const * const trk) const 
+{
+  StPicoEvent *event = (StPicoEvent *)picoDst->event();
+  StThreeVectorF pVtx(-999.,-999.,-999.);
+  pVtx = event->primaryVertex();
+  StPhysicalHelixD hlx = trk->helix();
+  double pathlength = hlx.pathLength( pVtx, false ); // do not scan periods
+  return (hlx.at(pathlength)-pVtx).mag();
 }
 
-float StPicoD0AnaMaker::sumCos(float phi,vector<float> &hadronsPhi) 
+void StPicoD0AnaMaker::fillHadronJetCorr()
 {
-  float sumOfCos = 0;
-  for(unsigned int i=0;i<hadronsPhi.size();++i)
-  {
-    sumOfCos += cos(2*(phi-hadronsPhi[i]));
-  }
-  return sumOfCos;
-}
-
-bool StPicoD0AnaMaker::fixPhi(vector<float> &phi) 
-{
-  if(phi.size() == 0) return false;
-  float sumPhi = 0;
-  for(unsigned int i=0;i<phi.size();i++)
-    sumPhi+=phi[i];
-  float meanPhi = sumPhi/phi.size();
-  for(unsigned int i=0;i<phi.size();i++)
-    phi[i] = phi[i]-meanPhi;  
-  return true;
-}
-
-
-bool StPicoD0AnaMaker::getHadronCorV2()
-{
-  float hadronFill[7] = {0};
-  const double reweight = mGRefMultCorrUtil->getWeight();
+  StThreeVectorF pVtx(-999.,-999.,-999.);
+  StPicoEvent *event = (StPicoEvent *)picoDst->event();
+  float field = event->bField();
+  pVtx = event->primaryVertex();
   int centrality  = mGRefMultCorrUtil->getCentralityBin9();
+  double reweight = mGRefMultCorrUtil->getWeight();
+
+
+  double jet_R = 0.2;
+  fastjet::JetDefinition jetDefinition(fastjet::antikt_algorithm,jet_R);
+  // double ptmin = 0.2;
+
   for(unsigned int i=0;i<picoDst->numberOfTracks();++i)
   {
-    StPicoTrack const* hadron = picoDst->track(i);
-    if(hadron->pMom().perp()<0.2) continue;
-    if(!isGoodHadron(hadron)) continue;
-    float etaHadron = hadron->pMom().pseudoRapidity();
-    float phiHadron = hadron->pMom().phi();
-    if(etaHadron<-0.35)
+    StPicoTrack const* mTrack = picoDst->track(i);
+    if(!isGoodHadron(mTrack)) continue;
+    if(mTrack->gPt()<0.2) continue;
+    double trackDca = getDca(mTrack);
+    if(trackDca>3)  continue;
+
+    double hadronPhi = mTrack->gMom(pVtx,field).phi();
+    hadronCount->Fill(mTrack->gPt(),centrality);
+    std::vector<fastjet::PseudoJet> mInclusiveJets;
+    std::vector<fastjet::PseudoJet> selectedTracks;
+    for(unsigned int j=0;j<picoDst->numberOfTracks();++j)
     {
-      hadronFill[0]++;
-      hadronFill[1] += sin(2 * phiHadron);
-      hadronFill[2] += cos(2 * phiHadron);
-    }			
-    if(etaHadron>0.35)
+      if(j==i)  continue;
+      StPicoTrack const* mTrackJet = picoDst->track(j);
+      if(!mTrackJet) continue;
+      if(mTrackJet->nHitsFit()<20) continue;
+      if(1.0*mTrackJet->nHitsFit()/mTrackJet->nHitsMax()<0.52) continue;
+      if(mTrackJet->gPt()<0.2) continue;
+      double trackJetDca = getDca(mTrackJet);
+      if(trackJetDca>3)  continue;
+      double trackPx = mTrackJet->gMom(pVtx,field).x();   
+      double trackPy = mTrackJet->gMom(pVtx,field).y();   
+      double trackPz = mTrackJet->gMom(pVtx,field).z();   
+      double trackM = 0.13957;
+      if(isTpcKaon(mTrackJet,&pVtx))
+        trackM = 0.493667;
+
+      double trackE = sqrt( trackPx*trackPx + trackPy*trackPy + trackPz*trackPz + trackM);
+      fastjet::PseudoJet pseudoJet(trackPx,trackPy,trackPz,trackE);
+      selectedTracks.push_back(pseudoJet);
+    }
+    fastjet::ClusterSequence cs(selectedTracks,jetDefinition);
+    mInclusiveJets = cs.inclusive_jets();
+    for(unsigned int i=0;i<mInclusiveJets.size();i++)
     {
-      hadronFill[3]++;
-      hadronFill[4] += sin(2 * phiHadron);
-      hadronFill[5] += cos(2 * phiHadron);
-    }			
+      if(mInclusiveJets[i].pt()<3)  continue;
+      double deltaPhi = (mInclusiveJets[i].phi()-hadronPhi);
+      if(deltaPhi<-0.5*pi)  deltaPhi += 2*pi;
+      if(deltaPhi>1.5*pi)  deltaPhi -= 2*pi;
+      double jetFill[] = {deltaPhi,(double)centrality,mInclusiveJets[i].pt(),mTrack->gPt()};
+      hHadronJetCorr->Fill(jetFill,reweight);
+    }
   }
-  hadronFill[6] = centrality;
-  hadronFill[7] = reweight;
-  mHadronTuple->Fill(hadronFill);
-  if(hadronFill[0]==0 || hadronFill[3]==0)
-     return false; 
-  double temp = (hadronFill[1]*hadronFill[4]+hadronFill[2]*hadronFill[5]);
-  hadronV2[0]->Fill(centrality,temp*reweight);
-  hadronV2[1]->Fill(centrality,hadronFill[2]*reweight);
-  hadronV2[2]->Fill(centrality,hadronFill[1]*reweight);
-  hadronV2[3]->Fill(centrality,hadronFill[5]*reweight);
-  hadronV2[4]->Fill(centrality,hadronFill[4]*reweight);
-  hadronV2_sum[0]->Fill(centrality,hadronFill[0]*hadronFill[3]*reweight);
-  hadronV2_sum[1]->Fill(centrality,hadronFill[0]*reweight);
-  hadronV2_sum[2]->Fill(centrality,hadronFill[0]*reweight);
-  hadronV2_sum[3]->Fill(centrality,hadronFill[3]*reweight);
-  hadronV2_sum[4]->Fill(centrality,hadronFill[3]*reweight);
-//    StPicoTrack const* hadron = picoDst->track(i);
-//  hadronV2_excl[0][centrality]->Fill(hadron->pMom().perp(),temp*reweight);
-//  hadronV2_excl[1][centrality]->Fill(hadron->pMom().perp(),hadronFill[2]*reweight);
-//  hadronV2_excl[2][centrality]->Fill(hadron->pMom().perp(),hadronFill[1]*reweight);
-//  hadronV2_excl[3][centrality]->Fill(hadron->pMom().perp(),hadronFill[5]*reweight);
-//  hadronV2_excl[4][centrality]->Fill(hadron->pMom().perp(),hadronFill[4]*reweight);
-//  hadronV2_excl_sum[0][centrality]->Fill(hadron->pMom().perp(),hadronFill[0]*hadronFill[3]*reweight);
-//  hadronV2_excl_sum[1][centrality]->Fill(hadron->pMom().perp(),hadronFill[0]*reweight);
-//  hadronV2_excl_sum[2][centrality]->Fill(hadron->pMom().perp(),hadronFill[0]*reweight);
-//  hadronV2_excl_sum[3][centrality]->Fill(hadron->pMom().perp(),hadronFill[3]*reweight);
-//  hadronV2_excl_sum[4][centrality]->Fill(hadron->pMom().perp(),hadronFill[3]*reweight);
-  return true;
 }
-
-/* 
-   float StPicoD0AnaMaker::getD0CorV2(int *sumPair, vector<const StKaonPion *> cand)
-   {
-   float sumCosPair = 0;
-   vector<float> hadron1Phi;
-   vector<float> hadron1Eta;
-   vector<float> hadron2Phi;
-   hadron1Phi.clear();
-   hadron1Eta.clear();
-   hadron2Phi.clear();
-   for(unsigned int i=0;i<cand.size();++i)
-   {
-   hadron1Phi.push_back(cand[i]->phi());
-   hadron1Eta.push_back(cand[i]->eta());
-   }
-   if(hadron1Phi.size()==0)  return 0;
-   fixPhi(hadron1Phi);
-   for(unsigned int i=0;i<hadron1Phi.size();i++)
-   { 
-   float eta1 = hadron1Eta[i];
-   float phi1 = hadron1Phi[i];
-   getCorHadron(eta1,hadron2Phi,-1,-1,0);
- *sumPair += hadron2Phi.size();
- sumCosPair += sumCos(phi1,hadron2Phi);
- }
- return sumCosPair/(*sumPair);
- }
-
-*/ 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 

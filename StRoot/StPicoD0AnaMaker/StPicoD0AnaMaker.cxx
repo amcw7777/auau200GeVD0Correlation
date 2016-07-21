@@ -104,9 +104,9 @@ Int_t StPicoD0AnaMaker::Init()
   dCount = new TH1F("dCount","dCount",10,0,10);
   hJetPt = new TH1F("hJetPt","",100,0,10);
   hHadronPt = new TH1F("hHadronPt","",100,0,10);
-  candCount = new TH2F("candCount","",1,0.5,1.5,10,0,10);                   
-  bkgCount = new TH2F("bkgCount","bkgcount;sbType; centrality bin",10,-1.5,8.5,10,0,10);
-  hadronCount = new TH2F("hadronCount","",1,0.5,1.5,10,0,10);
+  candCount = new TH2F("candCount","",10,0,10,10,0,10);                   
+  bkgCount = new TH2F("bkgCount","bkgcount;pT; centrality bin",10,0,10,10,0,10);
+  hadronCount = new TH2F("hadronCount","",100,0,10,10,0,10);
   // phiRun = new TH2F("phiRun","",60018,15107000,15167018,1000,-1.*pi,1.*pi);
   // mOutputFile->cd();
 
@@ -142,7 +142,7 @@ Int_t StPicoD0AnaMaker::Init()
   hD0D0Corr = new THnSparseD("hD0D0CorrCand","(1/N_{trig})(dN_{trig}/d#Delta#phi);#Delta #phi;centrality bin;pT (GeV/c);corIndex",NDimD0,NBinNumberD0,XMinD0,XMaxD0);
   hD0D0Corr->Sumw2();
 
-  hHadronJetCorr = new THnSparseD("hHadronJetCorr","(1/N_{trig})(dN_{trig}/d#Delta#phi);#Delta #phi;centrality bin;pT (GeV/c)",NDim,NBinNumber,XMin,XMax);
+  hHadronJetCorr = new THnSparseD("hHadronJetCorr","(1/N_{trig})(dN_{trig}/d#Delta#phi);#Delta #phi;centrality bin;jet pT (GeV/c);hadron pT",NDim,NBinNumber,XMin,XMax);
   hHadronJetCorr->Sumw2();
 
 
@@ -196,7 +196,7 @@ Int_t StPicoD0AnaMaker::Finish()
   invMCandJets->Write();
   invMBkgJets->Write();
 
-  dDaughterTuple->Write();
+  // dDaughterTuple->Write();
   daughterDup->Write();
   mOutputFile->Close();
   delete mPrescales;
@@ -259,7 +259,7 @@ Int_t StPicoD0AnaMaker::Make()
   if(centrality>=7) centBin=1;
   else if(centrality>=4)  centBin=2;
   else centBin=3;
-  fillHadronJetCorr();
+  // fillHadronJetCorr();
 
   //Jet definition
   double jet_R = 0.2;
@@ -307,17 +307,17 @@ Int_t StPicoD0AnaMaker::Make()
       if(!mTrack) continue;
       if(mTrack->nHitsFit()<20) continue;
       if(1.0*mTrack->nHitsFit()/mTrack->nHitsMax()<0.52) continue;
-      if(mTrack->pMom().perp()<0.2) continue;
-      // if(mTrack->gPt()<0.2) continue;
+      // if(mTrack->pMom().perp()<0.2) continue;
+      if(mTrack->gPt()<0.2) continue;
       double trackDca = getDca(mTrack);
       if(trackDca>3)  continue;
       if(dDaughters.find(i) != dDaughters.end())  continue;
-      // double trackPx = mTrack->gMom(pVtx,field).x();   
-      // double trackPy = mTrack->gMom(pVtx,field).y();   
-      // double trackPz = mTrack->gMom(pVtx,field).z();   
-      double trackPx = mTrack->pMom().x();   
-      double trackPy = mTrack->pMom().y();   
-      double trackPz = mTrack->pMom().z();   
+      double trackPx = mTrack->gMom(pVtx,field).x();   
+      double trackPy = mTrack->gMom(pVtx,field).y();   
+      double trackPz = mTrack->gMom(pVtx,field).z();   
+      // double trackPx = mTrack->pMom().x();   
+      // double trackPy = mTrack->pMom().y();   
+      // double trackPz = mTrack->pMom().z();   
       double trackM = 0.13957;
       if(isTpcKaon(mTrack,&pVtx))
         trackM = 0.493667;
@@ -372,7 +372,7 @@ Int_t StPicoD0AnaMaker::Make()
     int pairType = 0;
     if(isCand)
     {
-      candCount->Fill(1,centrality);
+      candCount->Fill(d0Pt,centrality);
       pairType = 1;
       if(d0Pt>3)
       {
@@ -382,7 +382,7 @@ Int_t StPicoD0AnaMaker::Make()
     }
     if(isBkg)
     {
-      bkgCount->Fill((double)0,centrality);
+      bkgCount->Fill(d0Pt,centrality);
       pairType = 2;
       if(d0Pt>3)
       {
@@ -392,7 +392,6 @@ Int_t StPicoD0AnaMaker::Make()
     }
     float daughterFill[] = {d0Pt,(float)pairType,kaon->gPt(),pion->gPt()};
     dDaughterTuple->Fill(daughterFill); 
-    bkgCount->Fill(sbType,centrality);
 
     cout<<"is tracks = "<<hCount[0]<<endl;
     cout<<"pass # hits = "<<hCount[1]<<endl;
@@ -410,10 +409,10 @@ Int_t StPicoD0AnaMaker::Make()
       if(!mTrack) continue;
       if(mTrack->nHitsFit()<20) continue;
       if(1.0*mTrack->nHitsFit()/mTrack->nHitsMax()<0.52) continue;
-      // double trackPt = mTrack->gPt();
-      // double hadron_phi = mTrack->gMom(pVtx,field).phi();
-      double hadron_phi = mTrack->pMom().phi();
-      double trackPt = mTrack->pMom().perp();
+      double trackPt = mTrack->gPt();
+      double hadron_phi = mTrack->gMom(pVtx,field).phi();
+      // double hadron_phi = mTrack->pMom().phi();
+      // double trackPt = mTrack->pMom().perp();
       if(trackPt<hadronPtCut) continue;
       double trackDca = getDca(mTrack);
       if(trackDca>3)  continue;
@@ -755,53 +754,53 @@ void StPicoD0AnaMaker::fillHadronJetCorr()
   int centrality  = mGRefMultCorrUtil->getCentralityBin9();
   double reweight = mGRefMultCorrUtil->getWeight();
 
-  std::vector<fastjet::PseudoJet> selectedTracks;
-  for(unsigned int i=0;i<picoDst->numberOfTracks();++i)
-  {
-    StPicoTrack const* mTrack = picoDst->track(i);
-    if(!mTrack) continue;
-    if(mTrack->nHitsFit()<20) continue;
-    if(1.0*mTrack->nHitsFit()/mTrack->nHitsMax()<0.52) continue;
-    if(mTrack->gPt()<0.2) continue;
-    double trackDca = getDca(mTrack);
-    if(trackDca>3)  continue;
-    double trackPx = mTrack->gMom(pVtx,field).x();   
-    double trackPy = mTrack->gMom(pVtx,field).y();   
-    double trackPz = mTrack->gMom(pVtx,field).z();   
-    double trackM = 0.13957;
-    if(isTpcKaon(mTrack,&pVtx))
-      trackM = 0.493667;
 
-    double trackE = sqrt( trackPx*trackPx + trackPy*trackPy + trackPz*trackPz + trackM);
-    fastjet::PseudoJet pseudoJet(trackPx,trackPy,trackPz,trackE);
-    selectedTracks.push_back(pseudoJet);
-    // trackAdd[pseudoJet] = i;
-    // std::pair<fastjet::PseudoJet,int> pairT(pseudoJet,i);
-    // trackAdd.push_back(pairT);
-  }
   double jet_R = 0.2;
   fastjet::JetDefinition jetDefinition(fastjet::antikt_algorithm,jet_R);
-  fastjet::ClusterSequence cs(selectedTracks,jetDefinition);
   // double ptmin = 0.2;
-  std::vector<fastjet::PseudoJet> mInclusiveJets;
-  mInclusiveJets = cs.inclusive_jets();
 
   for(unsigned int i=0;i<picoDst->numberOfTracks();++i)
   {
     StPicoTrack const* mTrack = picoDst->track(i);
     if(!isGoodHadron(mTrack)) continue;
-    if(mTrack->gPt()<3) continue;
+    if(mTrack->gPt()<0.2) continue;
+    double trackDca = getDca(mTrack);
+    if(trackDca>3)  continue;
 
     double hadronPhi = mTrack->gMom(pVtx,field).phi();
-    hadronCount->Fill(1,centrality);
+    hadronCount->Fill(mTrack->gPt(),centrality);
+    std::vector<fastjet::PseudoJet> mInclusiveJets;
+    std::vector<fastjet::PseudoJet> selectedTracks;
+    for(unsigned int j=0;j<picoDst->numberOfTracks();++j)
+    {
+      if(j==i)  continue;
+      StPicoTrack const* mTrackJet = picoDst->track(j);
+      if(!mTrackJet) continue;
+      if(mTrackJet->nHitsFit()<20) continue;
+      if(1.0*mTrackJet->nHitsFit()/mTrackJet->nHitsMax()<0.52) continue;
+      if(mTrackJet->gPt()<0.2) continue;
+      double trackJetDca = getDca(mTrackJet);
+      if(trackJetDca>3)  continue;
+      double trackPx = mTrackJet->gMom(pVtx,field).x();   
+      double trackPy = mTrackJet->gMom(pVtx,field).y();   
+      double trackPz = mTrackJet->gMom(pVtx,field).z();   
+      double trackM = 0.13957;
+      if(isTpcKaon(mTrackJet,&pVtx))
+        trackM = 0.493667;
 
+      double trackE = sqrt( trackPx*trackPx + trackPy*trackPy + trackPz*trackPz + trackM);
+      fastjet::PseudoJet pseudoJet(trackPx,trackPy,trackPz,trackE);
+      selectedTracks.push_back(pseudoJet);
+    }
+    fastjet::ClusterSequence cs(selectedTracks,jetDefinition);
+    mInclusiveJets = cs.inclusive_jets();
     for(unsigned int i=0;i<mInclusiveJets.size();i++)
     {
       if(mInclusiveJets[i].pt()<3)  continue;
       double deltaPhi = (mInclusiveJets[i].phi()-hadronPhi);
       if(deltaPhi<-0.5*pi)  deltaPhi += 2*pi;
       if(deltaPhi>1.5*pi)  deltaPhi -= 2*pi;
-      double jetFill[] = {deltaPhi,(double)centrality,mInclusiveJets[i].pt()};
+      double jetFill[] = {deltaPhi,(double)centrality,mInclusiveJets[i].pt(),mTrack->gPt()};
       hHadronJetCorr->Fill(jetFill,reweight);
     }
   }
