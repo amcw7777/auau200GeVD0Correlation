@@ -8,7 +8,7 @@ void plotD0Jet()
   D0CorrPlotter *plotter = new D0CorrPlotter();
   // plotter->init("root-files/dJCorrPt16.root");
   // plotter->init("root-files/d0-corr-trig-3GeV.root");
-  plotter->init("root-files/d0CorrelationGlobal.root");
+  plotter->init("root-files/test.root");
 
   TCanvas *cJet[6];
   TLegend *legJet[6][9];
