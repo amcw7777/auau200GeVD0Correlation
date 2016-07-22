@@ -57,8 +57,12 @@ void D0CorrPlotter::getJetCorrelation(pair<int,int> &centralityBinCut,pair<doubl
   TH2F *candCount = (TH2F *)inputFile->Get("candCount")->Clone("candCount");
   TH2F *bkgCount = (TH2F *)inputFile->Get("bkgCount")->Clone("bkgCount");
 
-  double nD0Cand = candCount->ProjectionX("candCount1D",centralityBinCut.first,centralityBinCut.second)->Integral(candCount->FindBin(d0PtCut.first),candCount->FindBin(d0PtCut.second));
-  double nD0Bkg= bkgCount->ProjectionX("bkgCount1D",centralityBinCut.first,centralityBinCut.second)->Integral(bkgCount->FindBin(d0PtCut.first),bkgCount->FindBin(d0PtCut.second));
+  // double nD0Cand = candCount->ProjectionX("candCount1D",centralityBinCut.first,centralityBinCut.second)->Integral(candCount->FindBin(d0PtCut.first),candCount->FindBin(d0PtCut.second));
+  // double nD0Bkg= bkgCount->ProjectionX("bkgCount1D",centralityBinCut.first,centralityBinCut.second)->Integral(bkgCount->FindBin(d0PtCut.first),bkgCount->FindBin(d0PtCut.second));
+  TH1D *candCount1D = candCount->ProjectionX("candCount1D",centralityBinCut.first,centralityBinCut.second);
+  TH1D *bkgCount1D = candCount->ProjectionX("bkgCount1D",centralityBinCut.first,centralityBinCut.second);
+  double nD0Cand= candCount1D->Integral(candCount1D->FindBin(d0PtCut.first),candCount1D->FindBin(d0PtCut.second));
+  double nD0Bkg= bkgCount1D->Integral(bkgCount1D->FindBin(d0PtCut.first),bkgCount1D->FindBin(d0PtCut.second));
   cout<<"# of candidate D0 = "<<nD0Cand<<endl;
   cout<<"# of background D0 = "<<nD0Bkg<<endl;
 
@@ -81,8 +85,8 @@ void D0CorrPlotter::getJetCorrelation(pair<int,int> &centralityBinCut,pair<doubl
 	bkgJetCorrelation->Scale(1./bkgJetCorrelation->GetBinWidth(1)/nD0Bkg);
 
 	TH3F *mass2d = (TH3F *)inputFile->Get("massPt")->Clone("mass2d");
-	// TH1D *massAllTrigger = (TH1D *)mass2d->ProjectionX("massAllTrigger",ptBinCut.first,ptBinCut.second,centralityBinCut.first,centralityBinCut.second)->Clone("massAllTrigger");
-	TH1D *massAllTrigger = (TH1D *)mass2d->ProjectionX("massAllTrigger",massAllTrigger->FindBin(d0PtCut.first),massAllTrigger->FindBin(d0PtCut.second),centralityBinCut.first,centralityBinCut.second)->Clone("massAllTrigger");
+  TH1D *hD0Pt = (TH1D *)mass2d->ProjectionY("hD0Pt");
+	TH1D *massAllTrigger = (TH1D *)mass2d->ProjectionX("massAllTrigger",hD0Pt->FindBin(d0PtCut.first),hD0Pt->FindBin(d0PtCut.second),centralityBinCut.first,centralityBinCut.second)->Clone("massAllTrigger");
 	double f = getSBRatio(massAllTrigger);
 }
 void D0CorrPlotter::getHadronCorrelation(pair<int,int> &centralityBinCut,pair<double,double> &ptCut,int rebinFactor)

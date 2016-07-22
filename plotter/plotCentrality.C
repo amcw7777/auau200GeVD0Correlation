@@ -8,7 +8,7 @@ void plotD0Jet()
   D0CorrPlotter *plotter = new D0CorrPlotter();
   // plotter->init("root-files/dJCorrPt16.root");
   // plotter->init("root-files/d0-corr-trig-3GeV.root");
-  plotter->init("test.root");
+   plotter->init("root-files/test.root");
 
   TCanvas *cJet[6];
   TLegend *legJet[6][9];
@@ -38,7 +38,7 @@ void plotD0Jet()
     {
       pair<int,int> inputCentralityBin(i+1,i+1);
       pair<double,double> inputPtCut(j+5,100);
-      pair<double,double> inputD0PtCut(3,10);
+      pair<double,double> inputD0PtCut(1,3);
       plotter->getJetCorrelation(inputCentralityBin,inputPtCut,inputRebinFactor,inputD0PtCut);
       plotter->getHadronJetCorrelation(inputCentralityBin,inputPtCut,inputRebinFactor);
       candJet[j][i] = plotter->getCandJetCorrelation();
