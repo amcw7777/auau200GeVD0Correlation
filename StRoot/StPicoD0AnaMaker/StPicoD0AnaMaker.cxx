@@ -38,17 +38,19 @@
 #include <stdio.h>
 #include <time.h>
 #include <algorithm>
+
+#include "StPicoD0AnaMaker.h"
 // Jet reconstruction lib
 #include "TStarJetVectorContainer.h"
 #include "TStarJetVector.h"
-#include "fastjet/PseudoJet.hh"
 #include "fastjet/PseudoJet.hh"
 #include "fastjet/JetDefinition.hh"
 #include "fastjet/AreaDefinition.hh"
 #include "fastjet/AreaDefinition.hh"
 #include "fastjet/ClusterSequence.hh"
 #include "fastjet/ClusterSequenceArea.hh"
-#include "StPicoD0AnaMaker.h"
+#include "TRandom3.h"
+
 
 ClassImp(StPicoD0AnaMaker)
 
@@ -110,11 +112,13 @@ Int_t StPicoD0AnaMaker::Init()
   // phiRun = new TH2F("phiRun","",60018,15107000,15167018,1000,-1.*pi,1.*pi);
   // mOutputFile->cd();
 
+  double pi = TMath::Pi();
   const int NDim = 4;// dPhi, centrality, pT
   const int NBinNumber[NDim] = {1000,10,100,100};
-  const double XMin[NDim] = {-1.6,0,0,0};
-  const double XMax[NDim] = {4.8,10,100,10};
+  const double XMin[NDim] = {-0.5*pi,0,0,0};
+  const double XMax[NDim] = {1.5*pi,10,100,10};
 
+  cout<<"init check 2"<<endl;
   hD0JetCorrCand = new THnSparseD("hD0JetCorrCand","(1/N_{trig})(dN_{trig}/d#Delta#phi);#Delta #phi;centrality bin ; pT (GeV/c); D^{0} p_{T} (GeV/c)",NDim,NBinNumber,XMin,XMax);
   hD0JetCorrBkg = new THnSparseD("hD0JetCorrBkg","(1/N_{trig})(dN_{trig}/d#Delta#phi);#Delta #phi;centrality bin;pT (GeV/c); D^{0} p_{T} (GeV/c)",NDim,NBinNumber,XMin,XMax);
   hD0JetCorrCand->Sumw2();
@@ -128,8 +132,8 @@ Int_t StPicoD0AnaMaker::Init()
 
   const int NDimSB = 5;// dPhi, centrality, pT,type
   const int NBinNumberSB[NDimSB] = {1000,10,100,100,10};
-  const double XMinSB[NDimSB] = {-1.6,0,0,0,0};
-  const double XMaxSB[NDimSB] = {4.8,10,100,10,10};
+  const double XMinSB[NDimSB] = {-0.5*pi,0,0,0,0};
+  const double XMaxSB[NDimSB] = {1.5*pi,10,100,10,10};
   hD0JetCorrSB = new THnSparseD("hD0JetCorrSB","(1/N_{trig})(dN_{trig}/d#Delta#phi);#Delta #phi;centrality bin;pT (GeV/c); D^{0} p_{T} (GeV/c);SB type",NDimSB,NBinNumberSB,XMinSB,XMaxSB);
   hD0JetCorrSB->Sumw2();
   hD0HadronCorrSB = new THnSparseD("hD0HadronCorrSB","(1/N_{trig})(dN_{trig}/d#Delta#phi);#Delta #phi;centrality bin;pT (GeV/c); D^{0} p_{T} (GeV/c);SB type",NDimSB,NBinNumberSB,XMinSB,XMaxSB);
@@ -137,8 +141,8 @@ Int_t StPicoD0AnaMaker::Init()
 
   const int NDimD0 = 4;// dPhi, centrality, pT
   const int NBinNumberD0[NDimD0] = {1000,10,100,5};
-  const double XMinD0[NDimD0] = {-1.6,0,0,0};
-  const double XMaxD0[NDimD0] = {4.8,10,100,5};
+  const double XMinD0[NDimD0] = {-0.5*pi,0,0,0};
+  const double XMaxD0[NDimD0] = {1.5*pi,10,100,5};
   hD0D0Corr = new THnSparseD("hD0D0CorrCand","(1/N_{trig})(dN_{trig}/d#Delta#phi);#Delta #phi;centrality bin;pT (GeV/c);corIndex",NDimD0,NBinNumberD0,XMinD0,XMaxD0);
   hD0D0Corr->Sumw2();
 
@@ -146,7 +150,7 @@ Int_t StPicoD0AnaMaker::Init()
   hHadronJetCorr->Sumw2();
 
 
-  jetPtPhi = new TH2F("jetPtPhi","jet-pt-phi;p_{T};#phi",1000,0,100,1000,-1.6,4.8);
+  jetPtPhi = new TH2F("jetPtPhi","jet-pt-phi;p_{T};#phi",1000,0,100,1000,-0.5*pi,1.5*pi);
 
   dcaCandJets = new TH3F("dcaCandJets","",10000,0,10,6,0,3.1416,10,0,10);
   dcaBkgJets = new TH3F("dcaBkgJets","",10000,0,10,6,0,3.1416,10,0,10);
@@ -154,6 +158,12 @@ Int_t StPicoD0AnaMaker::Init()
   invMBkgJets = new TH3F("invMBkgJets","",1000,0,10,6,0,3.1416,10,0,10);
   dDaughterTuple = new TNtuple("dDaughterTuple","tuple to store pT of d daughters","dPt:type:kaonPt:pionPt");
   daughterDup = new TH1D("daughterDup","",10,0,10);
+
+
+  // -------------- Mix events-------------------------
+ memset(nEvtsInBuffer,0,sizeof(nEvtsInBuffer));
+ memset(nEvtsInBuffer,0,sizeof(isFullInBuffer));
+ mSeed = 0;
 
   // -------------- USER VARIABLES -------------------------
   mGRefMultCorrUtil = new StRefMultCorr("grefmult");
@@ -187,17 +197,17 @@ Int_t StPicoD0AnaMaker::Finish()
   hD0JetCorrCand->Write();
   hD0JetCorrBkg->Write();
   hD0JetCorrSB->Write();
-  hD0HadronCorrCand->Write();
-  hD0HadronCorrBkg->Write();
-  hD0HadronCorrSB->Write();
-  hD0D0Corr->Write();
+  // hD0HadronCorrCand->Write();
+  // hD0HadronCorrBkg->Write();
+  // hD0HadronCorrSB->Write();
+  // hD0D0Corr->Write();
   hHadronJetCorr->Write();
 
-  invMCandJets->Write();
-  invMBkgJets->Write();
+  // invMCandJets->Write();
+  // invMBkgJets->Write();
 
   // dDaughterTuple->Write();
-  daughterDup->Write();
+  // daughterDup->Write();
   mOutputFile->Close();
   delete mPrescales;
 
@@ -252,6 +262,11 @@ Int_t StPicoD0AnaMaker::Make()
   mGRefMultCorrUtil->init(picoDst->event()->runId());
   mGRefMultCorrUtil->initEvent(picoDst->event()->grefMult(),pVtx.z(),picoDst->event()->ZDCx()) ;
   int centrality  = mGRefMultCorrUtil->getCentralityBin9();
+  if(centrality<0)//minBias trigger requires
+  {
+    LOG_WARN << " Centrality < 0! Skip! " << endm;
+    return kStWarn;
+  }
   int centBin = 0;
   // int runBin = phiWeight2D->GetXaxis()->FindBin(event->runId());
   // phiWeight = (TH1D *)phiWeight2D->ProjectionY("phiWeight",runBin,runBin);
@@ -301,45 +316,14 @@ Int_t StPicoD0AnaMaker::Make()
     // std::vector<fastjet::PseudoJet,int> trackAdd;
     cout<<"number of tracks = "<<picoDst->numberOfTracks()<<endl;
     int hCount[10] = {0};
-    for(unsigned int i=0;i<picoDst->numberOfTracks();++i)
+    vector<TLorentzVector> mInclusiveJets;
+    int vz = (int)event->primaryVertex().z() + 6;
+    cout<<"vz = "<<vz<<"\tcent = "<<centrality<<"\tbuffer = "<<nEvtsInBuffer[centrality][vz]<<endl;
+    for(int iBuffer=0;iBuffer<nEvtsInBuffer[centrality][vz];iBuffer++)
     {
-      StPicoTrack const* mTrack = picoDst->track(i);
-      if(!mTrack) continue;
-      if(mTrack->nHitsFit()<20) continue;
-      if(1.0*mTrack->nHitsFit()/mTrack->nHitsMax()<0.52) continue;
-      // if(mTrack->pMom().perp()<0.2) continue;
-      if(mTrack->gPt()<0.2) continue;
-      double trackDca = getDca(mTrack);
-      if(trackDca>3)  continue;
-      if(dDaughters.find(i) != dDaughters.end())  continue;
-      double trackPx = mTrack->gMom(pVtx,field).x();   
-      double trackPy = mTrack->gMom(pVtx,field).y();   
-      double trackPz = mTrack->gMom(pVtx,field).z();   
-      // double trackPx = mTrack->pMom().x();   
-      // double trackPy = mTrack->pMom().y();   
-      // double trackPz = mTrack->pMom().z();   
-      double trackM = 0.13957;
-      if(isTpcKaon(mTrack,&pVtx))
-        trackM = 0.493667;
-
-      double trackE = sqrt( trackPx*trackPx + trackPy*trackPy + trackPz*trackPz + trackM);
-      fastjet::PseudoJet pseudoJet(trackPx,trackPy,trackPz,trackE);
-      selectedTracks.push_back(pseudoJet);
-      // trackAdd[pseudoJet] = i;
-      // std::pair<fastjet::PseudoJet,int> pairT(pseudoJet,i);
-      // trackAdd.push_back(pairT);
+      cout<<"merging "<<iBuffer<<"th events!"<<endl;
+      mInclusiveJets.insert(mInclusiveJets.end(),jetsInBuffer[centrality][vz][iBuffer].begin(),jetsInBuffer[centrality][vz][iBuffer].end());
     }
-    fastjet::ClusterSequence cs(selectedTracks,jetDefinition);
-    // double ptmin = 0.2;
-    std::vector<fastjet::PseudoJet> mInclusiveJets;
-    mInclusiveJets = cs.inclusive_jets();
-
-    // for(unsigned int i=0;i<mInclusiveJets.size();i++)
-    // {
-    //   double jetPhi = mInclusiveJets[i].phi();
-    //   if(jetPhi>pi)  jetPhi = 2.*pi-jetPhi;
-    //   jetPtPhi->Fill(mInclusiveJets[i].pt(),jetPhi);
-    // }
 
 
     float d0Pt = kp->pt();
@@ -400,7 +384,7 @@ Int_t StPicoD0AnaMaker::Make()
     cout<<"pass DCA = "<<hCount[4]<<endl;
 
     dCount->Fill(d_counting);
-///// Loop to do D0-hadron correlation
+    ///// Loop to do D0-hadron correlation
     double hadronPtCut = 1.;
     double jetPtCut = 3.;
     for(unsigned int i=0;i<picoDst->numberOfTracks();++i)
@@ -432,17 +416,17 @@ Int_t StPicoD0AnaMaker::Make()
         hD0HadronCorrSB->Fill(hadronFillSB,reweight);
       }
     }
-//////////////////////////////////////
-///// Loop to do D0-jetcorrelation
-//
+    //////////////////////////////////////
+    ///// Loop to do D0-jetcorrelation
+    //
     for(unsigned int i=0;i<mInclusiveJets.size();i++)
     {
-      if(mInclusiveJets[i].pt()<jetPtCut)  continue;
-      double deltaPhi = (mInclusiveJets[i].phi()-kp->phi());
+      if(mInclusiveJets[i].Pt()<jetPtCut)  continue;
+      double deltaPhi = (mInclusiveJets[i].Phi()-kp->phi());
       if(deltaPhi<-0.5*pi)  deltaPhi += 2*pi;
       if(deltaPhi>1.5*pi)  deltaPhi -= 2*pi;
-      double jetFill[] = {deltaPhi,(double)centrality,mInclusiveJets[i].pt(),d0Pt};
-      double jetFillSB[] = {deltaPhi,(double)centrality,mInclusiveJets[i].pt(),d0Pt,(double)sbType};
+      double jetFill[] = {deltaPhi,(double)centrality,mInclusiveJets[i].Pt(),d0Pt};
+      double jetFillSB[] = {deltaPhi,(double)centrality,mInclusiveJets[i].Pt(),d0Pt,(double)sbType};
       if(isCand)
         hD0JetCorrCand->Fill(jetFill,reweight);
       if(isBkg)
@@ -450,22 +434,10 @@ Int_t StPicoD0AnaMaker::Make()
         hD0JetCorrBkg->Fill(jetFill,reweight);
         hD0JetCorrSB->Fill(jetFillSB,reweight);
       }
-      std::vector<fastjet::PseudoJet> constituents = mInclusiveJets[i].constituents();
-      for(unsigned int iC=0;iC<constituents.size();iC++)
-      {
-         for(unsigned int jC = iC;jC<constituents.size();jC++)
-         {
-           fastjet::PseudoJet cPair = constituents[iC]+constituents[jC];
-           if(isCand)
-             invMCandJets->Fill(cPair.m(),deltaPhi,centrality,reweight);
-           if(isBkg)
-             invMBkgJets->Fill(cPair.m(),deltaPhi,centrality,reweight);
-         }
-      }
     }
-///// Loop to do D0-jet correlation
-//////////////////////////////////////
-///// Loop to do D0-D0 correlation
+    ///// Loop to do D0-jet correlation
+    //////////////////////////////////////
+    ///// Loop to do D0-D0 correlation
     for (int jdx = idx; jdx < aKaonPion->GetEntries(); ++jdx)
     {
       StKaonPion const* kp_acc = (StKaonPion*)aKaonPion->At(jdx);
@@ -509,25 +481,27 @@ Int_t StPicoD0AnaMaker::Make()
       hD0D0Corr->Fill(d0Fill,reweight);
     }
   }
-  for(int i=0;i<bkgKaon.size();i++)
+  for(unsigned int i=0;i<bkgKaon.size();i++)
   {
     daughterDup->Fill(1);
-    for(int j=0;j<candKaon.size();j++)
+    for(unsigned int j=0;j<candKaon.size();j++)
       if(bkgKaon[i]==candKaon[j])
         daughterDup->Fill(5);
   }
-  for(int i=0;i<bkgPion.size();i++)
+  for(unsigned int i=0;i<bkgPion.size();i++)
   {
     daughterDup->Fill(2);
-    for(int j=0;j<candPion.size();j++)
+    for(unsigned int j=0;j<candPion.size();j++)
       if(bkgPion[i]==candPion[j])
         daughterDup->Fill(6);
   }
-  for(int i=0;i<candKaon.size();i++)
+  for(unsigned int i=0;i<candKaon.size();i++)
     daughterDup->Fill(3);
-  for(int i=0;i<candPion.size();i++)
+  for(unsigned int i=0;i<candPion.size();i++)
     daughterDup->Fill(4);
-  
+
+  cout<<"star to fill buffer"<<endl;
+  fillMixEventsBuffer();
   return kStOK;
 }
 //-----------------------------------------------------------------------------
@@ -754,10 +728,11 @@ void StPicoD0AnaMaker::fillHadronJetCorr()
   int centrality  = mGRefMultCorrUtil->getCentralityBin9();
   double reweight = mGRefMultCorrUtil->getWeight();
 
+  vector<TLorentzVector> mInclusiveJets;
+  int vz = (int)event->primaryVertex().z() + 6;
+  for(int iBuffer=0;iBuffer<nEvtsInBuffer[centrality][vz];iBuffer++)
+    mInclusiveJets.insert(mInclusiveJets.end(),jetsInBuffer[centrality][vz][iBuffer].begin(),jetsInBuffer[centrality][vz][iBuffer].end());
 
-  double jet_R = 0.2;
-  fastjet::JetDefinition jetDefinition(fastjet::antikt_algorithm,jet_R);
-  // double ptmin = 0.2;
 
   for(unsigned int i=0;i<picoDst->numberOfTracks();++i)
   {
@@ -769,40 +744,75 @@ void StPicoD0AnaMaker::fillHadronJetCorr()
 
     double hadronPhi = mTrack->gMom(pVtx,field).phi();
     hadronCount->Fill(mTrack->gPt(),centrality);
-    std::vector<fastjet::PseudoJet> mInclusiveJets;
-    std::vector<fastjet::PseudoJet> selectedTracks;
-    for(unsigned int j=0;j<picoDst->numberOfTracks();++j)
-    {
-      if(j==i)  continue;
-      StPicoTrack const* mTrackJet = picoDst->track(j);
-      if(!mTrackJet) continue;
-      if(mTrackJet->nHitsFit()<20) continue;
-      if(1.0*mTrackJet->nHitsFit()/mTrackJet->nHitsMax()<0.52) continue;
-      if(mTrackJet->gPt()<0.2) continue;
-      double trackJetDca = getDca(mTrackJet);
-      if(trackJetDca>3)  continue;
-      double trackPx = mTrackJet->gMom(pVtx,field).x();   
-      double trackPy = mTrackJet->gMom(pVtx,field).y();   
-      double trackPz = mTrackJet->gMom(pVtx,field).z();   
-      double trackM = 0.13957;
-      if(isTpcKaon(mTrackJet,&pVtx))
-        trackM = 0.493667;
-
-      double trackE = sqrt( trackPx*trackPx + trackPy*trackPy + trackPz*trackPz + trackM);
-      fastjet::PseudoJet pseudoJet(trackPx,trackPy,trackPz,trackE);
-      selectedTracks.push_back(pseudoJet);
-    }
-    fastjet::ClusterSequence cs(selectedTracks,jetDefinition);
-    mInclusiveJets = cs.inclusive_jets();
     for(unsigned int i=0;i<mInclusiveJets.size();i++)
     {
-      if(mInclusiveJets[i].pt()<3)  continue;
-      double deltaPhi = (mInclusiveJets[i].phi()-hadronPhi);
+      if(mInclusiveJets[i].Pt()<3)  continue;
+      double deltaPhi = (mInclusiveJets[i].Phi()-hadronPhi);
       if(deltaPhi<-0.5*pi)  deltaPhi += 2*pi;
       if(deltaPhi>1.5*pi)  deltaPhi -= 2*pi;
-      double jetFill[] = {deltaPhi,(double)centrality,mInclusiveJets[i].pt(),mTrack->gPt()};
+      double jetFill[] = {deltaPhi,(double)centrality,mInclusiveJets[i].Pt(),mTrack->gPt()};
       hHadronJetCorr->Fill(jetFill,reweight);
     }
   }
+}
+
+void StPicoD0AnaMaker::fillMixEventsBuffer()
+{
+  StPicoEvent *event = (StPicoEvent *)picoDst->event();
+  StThreeVectorF pVtx(-999.,-999.,-999.);
+  float field = event->bField();
+  pVtx = event->primaryVertex();
+  int vz = (int)event->primaryVertex().z() + 6;
+  int centrality  = mGRefMultCorrUtil->getCentralityBin9();
+  if(centrality<0) return;
+  // cout<<"vz = "<<vz<<"\tcent = "<<centrality<<"\tbuffer = "<<nEvtsInBuffer[centrality][vz]<<endl;
+
+  if(nEvtsInBuffer[centrality][vz]>=mMaxEvtsInBuffer)
+    isFullInBuffer[centrality][vz] = true;
+  TRandom3 *gRandom = new TRandom3(mSeed++);
+  int evtPointer = -1;
+  if(isFullInBuffer[centrality][vz])
+    evtPointer = (int)gRandom->Uniform(0,mMaxEvtsInBuffer-1.e-6);
+  else
+    evtPointer = nEvtsInBuffer[centrality][vz];
+  delete gRandom;
+  jetsInBuffer[centrality][vz][evtPointer].clear();
+  // cout<<"event pointer = "<<evtPointer<<endl;
+
+  double jet_R = 0.2;
+  fastjet::JetDefinition jetDefinition(fastjet::antikt_algorithm,jet_R);
+  std::vector<fastjet::PseudoJet> mInclusiveJets;
+  std::vector<fastjet::PseudoJet> selectedTracks;
+  for(unsigned int j=0;j<picoDst->numberOfTracks();++j)
+  {
+    StPicoTrack const* mTrackJet = picoDst->track(j);
+    if(!mTrackJet) continue;
+    if(mTrackJet->nHitsFit()<20) continue;
+    if(1.0*mTrackJet->nHitsFit()/mTrackJet->nHitsMax()<0.52) continue;
+    if(mTrackJet->gPt()<0.2) continue;
+    double trackJetDca = getDca(mTrackJet);
+    if(trackJetDca>3)  continue;
+    double trackPx = mTrackJet->gMom(pVtx,field).x();   
+    double trackPy = mTrackJet->gMom(pVtx,field).y();   
+    double trackPz = mTrackJet->gMom(pVtx,field).z();   
+    double trackM = 0.13957;
+    if(isTpcKaon(mTrackJet,&pVtx))
+      trackM = 0.493667;
+
+    double trackE = sqrt( trackPx*trackPx + trackPy*trackPy + trackPz*trackPz + trackM);
+    fastjet::PseudoJet pseudoJet(trackPx,trackPy,trackPz,trackE);
+    selectedTracks.push_back(pseudoJet);
+  }
+  fastjet::ClusterSequence cs(selectedTracks,jetDefinition);
+  mInclusiveJets = cs.inclusive_jets();
+  for(unsigned int i=0;i<mInclusiveJets.size();i++)
+  {
+    TLorentzVector jet;
+    jet.SetPxPyPzE(mInclusiveJets[i].px(),mInclusiveJets[i].py(),mInclusiveJets[i].pz(),mInclusiveJets[i].e());
+    jetsInBuffer[centrality][vz][evtPointer].push_back(jet);
+  }
+
+  if(!isFullInBuffer[centrality][vz])
+    nEvtsInBuffer[centrality][vz]++;
 }
 

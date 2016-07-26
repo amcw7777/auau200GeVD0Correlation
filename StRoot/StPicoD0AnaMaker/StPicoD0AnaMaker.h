@@ -27,6 +27,8 @@
 #include "TH1D.h"
 #include "TH3D.h"
 #include "TH2F.h"
+#include "TLorentzVector.h"
+
 #include "TNtuple.h"
 #include "TProfile.h"
 #include "THnSparse.h"
@@ -136,6 +138,18 @@ class StPicoD0AnaMaker : public StMaker
     TH1D *daughterDup;
     TNtuple *dDaughterTuple;
 
+    ////////For event-mixing //////
+    const Int_t mCentBins = 10;
+    const Int_t mVzBins = 12;
+    const Int_t mMaxEvtsInBuffer = 50;
+    int nEvtsInBuffer[10][12];
+    bool isFullInBuffer[10][12];
+    std::vector<TLorentzVector> jetsInBuffer[9][12][50];
+    void fillMixEventsBuffer();
+    int mSeed;
+   
+
+    ////////////////////////////
     // double fitsigma[6];
     // double fitmean[6];
     double mHadronV2[9];
