@@ -60,7 +60,7 @@ void D0CorrPlotter::getJetCorrelation(pair<int,int> &centralityBinCut,pair<doubl
   // double nD0Cand = candCount->ProjectionX("candCount1D",centralityBinCut.first,centralityBinCut.second)->Integral(candCount->FindBin(d0PtCut.first),candCount->FindBin(d0PtCut.second));
   // double nD0Bkg= bkgCount->ProjectionX("bkgCount1D",centralityBinCut.first,centralityBinCut.second)->Integral(bkgCount->FindBin(d0PtCut.first),bkgCount->FindBin(d0PtCut.second));
   TH1D *candCount1D = candCount->ProjectionX("candCount1D",centralityBinCut.first,centralityBinCut.second);
-  TH1D *bkgCount1D = candCount->ProjectionX("bkgCount1D",centralityBinCut.first,centralityBinCut.second);
+  TH1D *bkgCount1D = bkgCount->ProjectionX("bkgCount1D",centralityBinCut.first,centralityBinCut.second);
   double nD0Cand= candCount1D->Integral(candCount1D->FindBin(d0PtCut.first),candCount1D->FindBin(d0PtCut.second));
   double nD0Bkg= bkgCount1D->Integral(bkgCount1D->FindBin(d0PtCut.first),bkgCount1D->FindBin(d0PtCut.second));
   cout<<"# of candidate D0 = "<<nD0Cand<<endl;
@@ -441,15 +441,19 @@ void D0CorrPlotter::setCorrAxis(TH1D *corrPlot)
   // xAxis->SetBit(TAxis::kLabelsHori);
   // xAxis->SetLabelSize(0.075);
 }
-void D0CorrPlotter::getHadronJetCorrelation(pair<int,int> &centralityBinCut,pair<double,double> &ptCut,int rebinFactor)
+void D0CorrPlotter::getHadronJetCorrelation(pair<int,int> &centralityBinCut,pair<double,double> &ptCut,int rebinFactor,pair<double,double> &d0PtCut)
 {
   THnSparseD *hadronJetCorr= (THnSparseD *)inputFile->Get("hHadronJetCorr")->Clone("hadronJetCorr");
   TH2F *hadronCount = (TH2F *)inputFile->Get("hadronCount")->Clone("hadronCount");
 
-  double nHadron = hadronCount->ProjectionX("hadronCount1D",centralityBinCut.first,centralityBinCut.second)->Integral();
+  TH1D *hadronCount1D = hadronCount->ProjectionX("hadronCount1D",centralityBinCut.first,centralityBinCut.second);
+  double nHadron= hadronCount1D->Integral(hadronCount1D->FindBin(d0PtCut.first),hadronCount1D->FindBin(d0PtCut.second));
+  cout<<"nHadron = "<<nHadron<<endl;
 
   hadronJetCorr->GetAxis(1)->SetRange(centralityBinCut.first,centralityBinCut.second);
   hadronJetCorr->GetAxis(2)->SetRangeUser(ptCut.first,ptCut.second);
+  hadronJetCorr->GetAxis(3)->SetRangeUser(d0PtCut.first,d0PtCut.second);
+
 	hadronJetCorrelation = (TH1D *)hadronJetCorr->Projection(0)->Clone("hadronJetCorrelation");
   setCorrAxis(hadronJetCorrelation);
   // get hadronidate correlation

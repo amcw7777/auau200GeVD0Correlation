@@ -27,7 +27,7 @@ class D0CorrPlotter
     void finish();
     void getJetCorrelation(std::pair<int,int> &,std::pair<double,double> &, int,pair<double,double> &);
     void getHadronCorrelation(std::pair<int,int> &,std::pair<double,double> &, int);
-    void getHadronJetCorrelation(std::pair<int,int> &,std::pair<double,double> &, int);
+    void getHadronJetCorrelation(std::pair<int,int> &,std::pair<double,double> &, int,pair<double,double> &);
     void getCorrelation(int);
     void plotSignificance(TH2D *);
     // void plotCorrelation();
