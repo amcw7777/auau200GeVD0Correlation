@@ -110,10 +110,11 @@ Int_t StPicoD0AnaMaker::Init()
   // phiRun = new TH2F("phiRun","",60018,15107000,15167018,1000,-1.*pi,1.*pi);
   // mOutputFile->cd();
 
+  double pi = TMath::Pi();
   const int NDim = 4;// dPhi, centrality, pT
   const int NBinNumber[NDim] = {1000,10,100,100};
-  const double XMin[NDim] = {-1.6,0,0,0};
-  const double XMax[NDim] = {4.8,10,100,10};
+  const double XMin[NDim] = {-0.5*pi,0,0,0};
+  const double XMax[NDim] = {1.5*pi,10,100,10};
 
   hD0JetCorrCand = new THnSparseD("hD0JetCorrCand","(1/N_{trig})(dN_{trig}/d#Delta#phi);#Delta #phi;centrality bin ; pT (GeV/c); D^{0} p_{T} (GeV/c)",NDim,NBinNumber,XMin,XMax);
   hD0JetCorrBkg = new THnSparseD("hD0JetCorrBkg","(1/N_{trig})(dN_{trig}/d#Delta#phi);#Delta #phi;centrality bin;pT (GeV/c); D^{0} p_{T} (GeV/c)",NDim,NBinNumber,XMin,XMax);
@@ -128,8 +129,8 @@ Int_t StPicoD0AnaMaker::Init()
 
   const int NDimSB = 5;// dPhi, centrality, pT,type
   const int NBinNumberSB[NDimSB] = {1000,10,100,100,10};
-  const double XMinSB[NDimSB] = {-1.6,0,0,0,0};
-  const double XMaxSB[NDimSB] = {4.8,10,100,10,10};
+  const double XMinSB[NDimSB] = {-0.5*pi,0,0,0,0};
+  const double XMaxSB[NDimSB] = {1.5*pi,10,100,10,10};
   hD0JetCorrSB = new THnSparseD("hD0JetCorrSB","(1/N_{trig})(dN_{trig}/d#Delta#phi);#Delta #phi;centrality bin;pT (GeV/c); D^{0} p_{T} (GeV/c);SB type",NDimSB,NBinNumberSB,XMinSB,XMaxSB);
   hD0JetCorrSB->Sumw2();
   hD0HadronCorrSB = new THnSparseD("hD0HadronCorrSB","(1/N_{trig})(dN_{trig}/d#Delta#phi);#Delta #phi;centrality bin;pT (GeV/c); D^{0} p_{T} (GeV/c);SB type",NDimSB,NBinNumberSB,XMinSB,XMaxSB);
@@ -137,8 +138,8 @@ Int_t StPicoD0AnaMaker::Init()
 
   const int NDimD0 = 4;// dPhi, centrality, pT
   const int NBinNumberD0[NDimD0] = {1000,10,100,5};
-  const double XMinD0[NDimD0] = {-1.6,0,0,0};
-  const double XMaxD0[NDimD0] = {4.8,10,100,5};
+  const double XMinD0[NDimD0] = {-0.5*pi,0,0,0};
+  const double XMaxD0[NDimD0] = {1.5*pi,10,100,5};
   hD0D0Corr = new THnSparseD("hD0D0CorrCand","(1/N_{trig})(dN_{trig}/d#Delta#phi);#Delta #phi;centrality bin;pT (GeV/c);corIndex",NDimD0,NBinNumberD0,XMinD0,XMaxD0);
   hD0D0Corr->Sumw2();
 
@@ -146,7 +147,7 @@ Int_t StPicoD0AnaMaker::Init()
   hHadronJetCorr->Sumw2();
 
 
-  jetPtPhi = new TH2F("jetPtPhi","jet-pt-phi;p_{T};#phi",1000,0,100,1000,-1.6,4.8);
+  jetPtPhi = new TH2F("jetPtPhi","jet-pt-phi;p_{T};#phi",1000,0,100,1000,-0.5*pi,1.5*pi);
 
   dcaCandJets = new TH3F("dcaCandJets","",10000,0,10,6,0,3.1416,10,0,10);
   dcaBkgJets = new TH3F("dcaBkgJets","",10000,0,10,6,0,3.1416,10,0,10);
@@ -805,4 +806,3 @@ void StPicoD0AnaMaker::fillHadronJetCorr()
     }
   }
 }
-
