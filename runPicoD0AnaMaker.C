@@ -42,7 +42,7 @@ void runPicoD0AnaMaker(TString d0list="file.list",TString outFileName="test.root
   gSystem->Exec(command.Data());
   command = "sed -i 's/Pico16a/physics2/g' correspondingPico.list";
   gSystem->Exec(command.Data());
-  command = "sed -i 's/D0_tmp\\\///g' correspondingPico.list";
+  command = "sed -i 's/D0\\\///g' correspondingPico.list";
   gSystem->Exec(command.Data());
   command = "sed -i 's/picoD0/picoDst/g' correspondingPico.list";
   gSystem->Exec(command.Data());

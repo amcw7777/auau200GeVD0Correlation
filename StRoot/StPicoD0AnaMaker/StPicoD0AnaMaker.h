@@ -110,9 +110,11 @@ class StPicoD0AnaMaker : public StMaker
     // static const double     pi  = 3.14159265358979323846;
     TH1F *vtxz;
     TH1F *dCount;
-    TH1F *hJetPt;;
-    TH1F *hHadronPt;;
+    TH1F *hJetPt;
+    TH1F *hJetBkg;
+    TH1F *hHadronPt;
     TH2F *jetPtPhi;
+    TH1D *jetRho;
 
     THnSparseD *hD0JetCorrCand;
     THnSparseD *hD0JetCorrBkg;
@@ -125,7 +127,7 @@ class StPicoD0AnaMaker : public StMaker
 
     TH3F *massPt;
     TH2F *candCount;
-    TH2F *bkgCount;
+    TH3F *bkgCount;
     TH2F *hadronCount;
 
     TH3F *dcaCandJets;
@@ -140,6 +142,7 @@ class StPicoD0AnaMaker : public StMaker
     // double fitmean[6];
     double mHadronV2[9];
     double efficiency[4][6];
+    double mRho;
     ClassDef(StPicoD0AnaMaker, 1)
 };
 

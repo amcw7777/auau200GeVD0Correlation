@@ -102,18 +102,20 @@ Int_t StPicoD0AnaMaker::Init()
 
   vtxz = new TH1F("vtxz","",100,-10,10);
   dCount = new TH1F("dCount","dCount",10,0,10);
-  hJetPt = new TH1F("hJetPt","",100,0,10);
+  hJetPt = new TH1F("hJetPt","",10,0,10);
+  hJetBkg = new TH1F("hJetBkg","",10,0,10);
   hHadronPt = new TH1F("hHadronPt","",100,0,10);
-  candCount = new TH2F("candCount","",10,0,10,10,0,10);                   
-  bkgCount = new TH2F("bkgCount","bkgcount;pT; centrality bin",10,0,10,10,0,10);
+  candCount = new TH2F("candCount","",10,0,10,10,0,10);
+  jetRho = new TH1D("jetRho","jetRho",1000,0,100);
+  bkgCount = new TH3F("bkgCount","bkgcount;pT; centrality bin",10,0,10,10,0,10,10,0,10);
   hadronCount = new TH2F("hadronCount","",100,0,10,10,0,10);
   // phiRun = new TH2F("phiRun","",60018,15107000,15167018,1000,-1.*pi,1.*pi);
   // mOutputFile->cd();
 
   double pi = TMath::Pi();
   const int NDim = 4;// dPhi, centrality, pT
-  const int NBinNumber[NDim] = {1000,10,100,100};
-  const double XMin[NDim] = {-0.5*pi,0,0,0};
+  const int NBinNumber[NDim] = {1000,10,1200,10};
+  const double XMin[NDim] = {-0.5*pi,0,-20,0};
   const double XMax[NDim] = {1.5*pi,10,100,10};
 
   hD0JetCorrCand = new THnSparseD("hD0JetCorrCand","(1/N_{trig})(dN_{trig}/d#Delta#phi);#Delta #phi;centrality bin ; pT (GeV/c); D^{0} p_{T} (GeV/c)",NDim,NBinNumber,XMin,XMax);
@@ -176,8 +178,10 @@ Int_t StPicoD0AnaMaker::Finish()
   vtxz->Write();
   dCount->Write();
   hJetPt->Write();
+  hJetBkg->Write();
   hHadronPt->Write();
   jetPtPhi->Write();
+  jetRho->Write();
 
   massPt->Write();
 
@@ -265,10 +269,59 @@ Int_t StPicoD0AnaMaker::Make()
   //Jet definition
   double jet_R = 0.2;
   fastjet::JetDefinition jetDefinition(fastjet::antikt_algorithm,jet_R);
+  fastjet::JetDefinition jetDefinitionTest(fastjet::kt_algorithm,jet_R);
   //Area defintion
-  // double ghost_maxrap = 1.0;// fiducial cut for background estimation
-  // fastjet::AreaDefinition areaDefinition(fastjet::active_area_explicit_ghosts,fastjet::GhostedAreaSpec(ghost_maxrap,1,0.01));
+  double ghost_maxrap = 1.0;// fiducial cut for background estimation
+  fastjet::AreaDefinition areaDefinition(fastjet::active_area_explicit_ghosts,fastjet::GhostedAreaSpec(ghost_maxrap,1,0.01));
   // container for selected tracks
+  std::vector<fastjet::PseudoJet> mInclusiveJetsTest;
+  std::vector<fastjet::PseudoJet> selectedTracksTest;
+  for(unsigned int i=0;i<picoDst->numberOfTracks();++i)
+  {
+    StPicoTrack const* mTrack = picoDst->track(i);
+    if(!mTrack) continue;
+    if(mTrack->nHitsFit()<20) continue;
+    if(1.0*mTrack->nHitsFit()/mTrack->nHitsMax()<0.52) continue;
+    // if(mTrack->pMom().perp()<0.2) continue;
+    if(mTrack->gPt()<0.2) continue;
+    double trackDca = getDca(mTrack);
+    if(trackDca>3)  continue;
+    double trackPx = mTrack->gMom(pVtx,field).x();   
+    double trackPy = mTrack->gMom(pVtx,field).y();   
+    double trackPz = mTrack->gMom(pVtx,field).z();   
+    // double trackPx = mTrack->pMom().x();   
+    // double trackPy = mTrack->pMom().y();   
+    // double trackPz = mTrack->pMom().z();   
+    double trackM = 0.13957;
+    if(isTpcKaon(mTrack,&pVtx))
+      trackM = 0.493667;
+
+    double trackE = sqrt( trackPx*trackPx + trackPy*trackPy + trackPz*trackPz + trackM);
+    fastjet::PseudoJet pseudoJet(trackPx,trackPy,trackPz,trackE);
+    selectedTracksTest.push_back(pseudoJet);
+    // trackAdd[pseudoJet] = i;
+    // std::pair<fastjet::PseudoJet,int> pairT(pseudoJet,i);
+    // trackAdd.push_back(pairT);
+  }
+  fastjet::ClusterSequenceArea csTest(selectedTracksTest,jetDefinitionTest,areaDefinition);
+  mInclusiveJetsTest = sorted_by_pt(csTest.inclusive_jets());
+  for(unsigned int i=0;i<mInclusiveJetsTest.size();i++)
+  {
+    double jetPhi = mInclusiveJetsTest[i].phi();
+    if(jetPhi>pi)  jetPhi = 2.*pi-jetPhi;
+    jetPtPhi->Fill(mInclusiveJetsTest[i].pt(),jetPhi);
+  }
+  vector<double> rhoVector;
+  for(unsigned int i=2;i<mInclusiveJetsTest.size();i++)
+  {
+    double rho = mInclusiveJetsTest[i].pt()/mInclusiveJetsTest[i].area();
+    rhoVector.push_back(rho);
+  }
+  sort(rhoVector.begin(),rhoVector.end());
+  int midVector = rhoVector.size()/2;
+  mRho = rhoVector[midVector];
+  jetRho->Fill(mRho);
+
 
   double reweight = mGRefMultCorrUtil->getWeight();
   double pi = TMath::Pi();
@@ -330,18 +383,11 @@ Int_t StPicoD0AnaMaker::Make()
       // std::pair<fastjet::PseudoJet,int> pairT(pseudoJet,i);
       // trackAdd.push_back(pairT);
     }
-    fastjet::ClusterSequence cs(selectedTracks,jetDefinition);
+    // fastjet::ClusterSequence cs(selectedTracks,jetDefinition);
+    fastjet::ClusterSequenceArea cs(selectedTracks,jetDefinition,areaDefinition);
     // double ptmin = 0.2;
     std::vector<fastjet::PseudoJet> mInclusiveJets;
     mInclusiveJets = cs.inclusive_jets();
-
-    // for(unsigned int i=0;i<mInclusiveJets.size();i++)
-    // {
-    //   double jetPhi = mInclusiveJets[i].phi();
-    //   if(jetPhi>pi)  jetPhi = 2.*pi-jetPhi;
-    //   jetPtPhi->Fill(mInclusiveJets[i].pt(),jetPhi);
-    // }
-
 
     float d0Pt = kp->pt();
     double d0Mass = kp->m();
@@ -383,7 +429,7 @@ Int_t StPicoD0AnaMaker::Make()
     }
     if(isBkg)
     {
-      bkgCount->Fill(d0Pt,centrality);
+      bkgCount->Fill(d0Pt,centrality,sbType);
       pairType = 2;
       if(d0Pt>3)
       {
@@ -438,14 +484,18 @@ Int_t StPicoD0AnaMaker::Make()
 //
     for(unsigned int i=0;i<mInclusiveJets.size();i++)
     {
-      if(mInclusiveJets[i].pt()<jetPtCut)  continue;
+      double jetArea = mInclusiveJets[i].area();
+      double jetPt = mInclusiveJets[i].pt()-mRho*jetArea;
+      // if(mInclusiveJets[i].pt()<jetPtCut)  continue;
       double deltaPhi = (mInclusiveJets[i].phi()-kp->phi());
       if(deltaPhi<-0.5*pi)  deltaPhi += 2*pi;
       if(deltaPhi>1.5*pi)  deltaPhi -= 2*pi;
-      double jetFill[] = {deltaPhi,(double)centrality,mInclusiveJets[i].pt(),d0Pt};
-      double jetFillSB[] = {deltaPhi,(double)centrality,mInclusiveJets[i].pt(),d0Pt,(double)sbType};
+      double jetFill[] = {deltaPhi,(double)centrality,jetPt,d0Pt};
+      double jetFillSB[] = {deltaPhi,(double)centrality,jetPt,d0Pt,(double)sbType};
       if(isCand)
+      {
         hD0JetCorrCand->Fill(jetFill,reweight);
+      }
       if(isBkg)
       {
         hD0JetCorrBkg->Fill(jetFill,reweight);
